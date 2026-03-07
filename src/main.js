@@ -1,3 +1,4 @@
+import './style.css' 
 import Phaser from "phaser"
 
 class IsoScene extends Phaser.Scene {
@@ -14,15 +15,15 @@ class IsoScene extends Phaser.Scene {
     const tileWidth = 32
     const tileHeight = 16 
 
-    for (let x = 0; x < 10; x++) {
-      for (let y = 0; y < 10; y++) {
+    for (let x = 0; x < 200; x++) {
+      for (let y = 0; y < 200; y++) {
 
         const screenX = (x - y) * tileWidth / 2
         const screenY = (x + y) * tileHeight / 2
 
         this.add.image(
-          400 + screenX,
-          100 + screenY,
+          window.innerWidth/2 + screenX,
+          screenY - window.innerHeight/2,
           "tile"
         )
       }
@@ -33,8 +34,8 @@ class IsoScene extends Phaser.Scene {
 
 const config = {
   type: Phaser.AUTO,
-  width: 800,
-  height: 600,
+  width: window.innerWidth,
+  height: window.innerHeight,
   scene: IsoScene
 }
 
