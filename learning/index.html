@@ -5,14 +5,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
     </head>
     <body>
-        <canvas id="gameCanvas" height="200" width="100" style="border: 1px solid #000000;"></canvas>   
-
-
+        <canvas id="gameCanvas" height="400" width="800" style="border: 1px solid #000000;"></canvas>   
         <script>
             const canvas = document.getElementById("gameCanvas") 
             const ctx = canvas.getContext("2d")
+
             ctx.fillStyle = "red"
-            ctx.fillRect(0, 0, 100, 200)
+            ctx.fillRect(10, 10, 300, 300)
+
+            setTimeout(()=> {
+                ctx.clearRect(10, 10, 300, 300)
+            }, 2000)
         </script>
     </body>
-</html>
+</html
+
