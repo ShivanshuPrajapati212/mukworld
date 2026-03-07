@@ -5,17 +5,45 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
     </head>
     <body>
-        <canvas id="gameCanvas" height="400" width="800" style="border: 1px solid #000000;"></canvas>   
+        <h1>Moving Rectangle</h1>
+        <canvas id="gameCanvas" height="600" width="600" style="border: 1px solid #000000;"></canvas>   
         <script>
             const canvas = document.getElementById("gameCanvas") 
             const ctx = canvas.getContext("2d")
 
-            ctx.fillStyle = "red"
-            ctx.fillRect(10, 10, 300, 300)
+            let x = 10
+            let y = 10 
+            const width = 30 
+            const height = 30
 
-            setTimeout(()=> {
-                ctx.clearRect(10, 10, 300, 300)
-            }, 2000)
+            ctx.fillStyle = "red"
+            ctx.fillRect(x, y, width, height) 
+
+            let currKey; 
+            document.addEventListener('keydown', (event) => {
+                currKey = event.key
+            });  
+
+            const updateFrame = (ctx, currKey) => {
+                ctx.clearRect(x, y, width, height)
+                if (currKey === "ArrowUp") {
+                    y -= 5
+                } else if (currKey === "ArrowDown") {
+                    y += 5
+                } else if (currKey === "ArrowRight") {
+                    x += 5
+                } else if (currKey === "ArrowLeft") {
+                    x -= 5
+                }
+                ctx.fillStyle = "red"
+                ctx.fillRect(x, y, width, height)
+            }
+            
+            setInterval(()=>{
+               updateFrame(ctx, currKey) 
+            },41)
+
+
         </script>
     </body>
 </html
