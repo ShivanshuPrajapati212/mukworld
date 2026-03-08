@@ -5,7 +5,7 @@ class IsoScene extends Phaser.Scene {
   constructor() {
     super("IsoScene")
     this.tileWidth = 32 
-    this.tileHeight = 16 
+    this.tileHeight = 32 
     this.isDragging = false
     this.lastPointerPos = { x: 0, y: 0 }
     this.hoveredTile = null
