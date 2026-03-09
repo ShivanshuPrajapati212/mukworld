@@ -1,3 +1,3 @@
 # mukworld - Stimulate an AI Comapany (Discontinued)
 
-Phaser sucks, isometric game dev sucks, i don't understand anything, i will never do this again.
+Im back, I will do this, I will learn game dev, I will make billions of dollars through this.
