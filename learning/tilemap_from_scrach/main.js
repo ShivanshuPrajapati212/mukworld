@@ -13,7 +13,7 @@ const tileWidth = 100
 for (let i = 0; i <= winWidth/tileWidth; i++) {
     for (let j = 0; j <= winHeight/tileHeight; j++) {
         if ((i + j) % 2 === 0) {
-            ctx.fillStyle = "blue"
+            ctx.fillStyle = "green"
         } else {
             ctx.fillStyle = "white"
         }
