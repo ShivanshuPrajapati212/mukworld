@@ -18,5 +18,18 @@ for (let i = 0; i <= winWidth/tileWidth; i++) {
             ctx.fillStyle = "white"
         }
         ctx.fillRect(tileWidth*i, tileHeight*j, tileWidth, tileHeight)
+
+        ctx.beginPath()
+
+        ctx.moveTo(tileWidth*i, tileHeight*j)
+
+        ctx.lineTo(tileWidth*i + tileWidth, tileHeight*j)
+        ctx.lineTo(tileWidth*i + tileWidth, tileHeight*j + tileHeight)
+        ctx.lineTo(tileWidth*i, tileHeight*j + tileHeight)
+        ctx.lineTo(tileWidth*i, tileHeight*j)
+
+        ctx.closePath()    
+
+        ctx.fill() 
     }
 }
