@@ -17,19 +17,20 @@ for (let i = 0; i <= winWidth/tileWidth; i++) {
         } else {
             ctx.fillStyle = "white"
         }
-        // ctx.fillRect(tileWidth*i, tileHeight*j, tileWidth, tileHeight)
+        
+        const additionalLength = (((tileWidth**2+tileHeight**2) ** 0.5) - winWidth)/2
 
         ctx.beginPath()
 
-        ctx.moveTo(tileWidth*i, tileHeight*j)
+        ctx.moveTo(tileWidth*i + tileWidth/2, tileHeight*j - additionalLength)
 
-        ctx.lineTo(tileWidth*i + tileWidth, tileHeight*j)
-        ctx.lineTo(tileWidth*i + tileWidth, tileHeight*j + tileHeight)
-        ctx.lineTo(tileWidth*i, tileHeight*j + tileHeight)
-        ctx.lineTo(tileWidth*i, tileHeight*j)
+        ctx.lineTo(tileWidth*i + tileWidth + additionalLength, tileHeight*j + tileHeight/2)
+        ctx.lineTo(tileWidth*i + tileWidth/2, tileHeight*j + tileHeight + additionalLength)
+        ctx.lineTo(tileWidth*i - additionalLength, tileHeight*j + tileHeight/2)
+        ctx.lineTo(tileWidth*i + tileWidth/2, tileHeight*j - additionalLength)
 
         ctx.closePath()    
 
-        ctx.fill() 
+        ctx.stroke() 
     }
 }
