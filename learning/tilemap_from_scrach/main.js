@@ -18,16 +18,13 @@ for (let i = 0; i <= winWidth/tileWidth; i++) {
             ctx.fillStyle = "white"
         }
         
-        const additionalLength = (((tileWidth**2+tileHeight**2) ** 0.5) - winWidth)/2
-
         ctx.beginPath()
 
-        ctx.moveTo(tileWidth*i + tileWidth/2, tileHeight*j - additionalLength)
-
-        ctx.lineTo(tileWidth*i + tileWidth + additionalLength, tileHeight*j + tileHeight/2)
-        ctx.lineTo(tileWidth*i + tileWidth/2, tileHeight*j + tileHeight + additionalLength)
-        ctx.lineTo(tileWidth*i - additionalLength, tileHeight*j + tileHeight/2)
-        ctx.lineTo(tileWidth*i + tileWidth/2, tileHeight*j - additionalLength)
+        ctx.moveTo(tileWidth*i + tileWidth/2, tileHeight*j)
+        ctx.lineTo(tileWidth*i + tileWidth, tileHeight*j + tileHeight/2)
+        ctx.lineTo(tileWidth*i + tileWidth/2, tileHeight*j + tileHeight)
+        ctx.lineTo(tileWidth*i, tileHeight*j + tileHeight/2)
+        ctx.lineTo(tileWidth*i + tileWidth/2, tileHeight*j)
 
         ctx.closePath()    
 
