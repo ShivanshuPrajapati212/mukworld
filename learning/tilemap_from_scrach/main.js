@@ -7,16 +7,12 @@ const ctx = canvas.getContext("2d")
 const winHeight = window.innerHeight
 const winWidth = window.innerWidth 
 
-const tileHeight = 100
+const tileHeight = 50 
 const tileWidth = 100
 
 for (let i = 0; i <= winWidth/tileWidth; i++) {
     for (let j = 0; j <= winHeight/tileHeight; j++) {
-        if ((i + j) % 2 === 0) {
-            ctx.fillStyle = "green"
-        } else {
-            ctx.fillStyle = "white"
-        }
+        ctx.fillStyle = "green"
         
         ctx.beginPath()
 
@@ -29,5 +25,6 @@ for (let i = 0; i <= winWidth/tileWidth; i++) {
         ctx.closePath()    
 
         ctx.stroke() 
+        ctx.fill()
     }
 }
