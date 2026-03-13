@@ -84,6 +84,37 @@
         transition: opacity 0.3s;
         z-index: 100;
       }
+
+      .right-panel {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 220px;
+        display: flex;
+        flex-direction: column;
+      }
+      .right-panel h3 {
+        margin: 5px 0 10px 0;
+        font-size: 18px;
+        border-bottom: 1px solid #555;
+        padding-bottom: 5px;
+      }
+      .right-panel p {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+      }
+      .info-panel {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        min-width: 250px;
+        text-align: center;
+        z-index: 50;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.8);
+      }
+      .info-panel h3 { margin-top: 0; }
+      .info-panel p { margin-bottom: 15px; line-height: 1.4; }
     </style>
   </head>
   <body>
@@ -100,11 +131,32 @@
       </div>
 
       <div class="ui-panel controls">
-        <button id="btn-cancel">Cancel Mode</button>
+        <button id="btn-cancel" class="active">Select (Cancel)</button>
         <button id="btn-build-server1">Build Server T1 ($100)</button>
         <button id="btn-build-server2">Build Server T2 ($500)</button>
         <button id="btn-build-desk">Build Desk ($50)</button>
         <button id="btn-expand">Expand Room</button>
+      </div>
+
+      <div class="ui-panel right-panel">
+        <h3>Model Training</h3>
+        <p>Current Rate: <span id="hud-tps">0</span> TPS</p>
+        <div style="display:flex;gap:5px;align-items:center;">
+          <input type="number" id="train-rate-input" value="10" min="0" style="width: 60px; padding: 5px; border-radius:3px; border:none;">
+          <button id="btn-set-train" style="padding: 5px 10px;">Set TPS</button>
+        </div>
+        <hr style="border-top:1px solid #555; border-bottom:none; margin: 15px 0; width: 100%;">
+        <h3>Data Market</h3>
+        <button id="btn-sell-data" style="width:100%; background-color:#2196F3;">Sell All Data ($2/ea)</button>
+      </div>
+
+      <div id="info-panel" class="ui-panel info-panel" style="display:none;">
+        <h3 id="info-title">Building</h3>
+        <p id="info-desc">Details</p>
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <button id="btn-info-close" style="background-color:#777;">Close</button>
+          <button id="btn-info-upgrade" style="background-color:#f39c12;">Upgrade</button>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/main.js"></script>

@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { fetchState, buildInfrastructure, expandRoom } from '../api/index.js';
+import { fetchState, buildInfrastructure, expandRoom, setTrainingRate, sellData } from '../api/index.js';
 
 const TILE_WIDTH = 64;
 const TILE_HEIGHT = 32;
@@ -290,10 +290,28 @@ export class MainScene extends Phaser.Scene {
 
     // Click to place
     this.input.on('pointerdown', async (pointer) => {
-      if (this.mode === 'idle') return;
-      
       const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
       const cartPos = this.isometricToCartesian(worldPoint.x, worldPoint.y);
+
+      if (this.mode === 'idle') {
+        if (!this.gameState) return;
+        const clickedBuilding = this.gameState.grid.find(b => {
+          return cartPos.x >= b.x && cartPos.x < b.x + b.width &&
+                 cartPos.y >= b.y && cartPos.y < b.y + b.height;
+        });
+
+        const infoPanel = document.getElementById('info-panel');
+        if (clickedBuilding) {
+           const infoTitle = document.getElementById('info-title');
+           const infoDesc = document.getElementById('info-desc');
+           infoTitle.innerText = `${clickedBuilding.type.replace('_', ' ')}`;
+           infoDesc.innerText = `Position: (${clickedBuilding.x}, ${clickedBuilding.y})\nDimensions: ${clickedBuilding.width}x${clickedBuilding.height}`;
+           infoPanel.style.display = 'block';
+        } else {
+           if (infoPanel) infoPanel.style.display = 'none';
+        }
+        return;
+      }
       
       if (this.mode === 'build') {
         if (!this.isValidPlacement(cartPos.x, cartPos.y, this.buildWidth, this.buildHeight)) {
@@ -401,12 +419,14 @@ export class MainScene extends Phaser.Scene {
     const dataEl = document.getElementById('hud-data');
     const usersEl = document.getElementById('hud-users');
     const qualityEl = document.getElementById('hud-quality');
+    const tpsEl = document.getElementById('hud-tps');
 
     if (moneyEl) moneyEl.innerText = `Money: $${Math.floor(this.gameState.money)}`;
     if (computeEl) computeEl.innerText = `Compute: ${Math.floor(this.gameState.compute)}`;
     if (dataEl) dataEl.innerText = `Data: ${Math.floor(this.gameState.data)}`;
     if (usersEl) usersEl.innerText = `Users: ${Math.floor(this.gameState.users)}`;
     if (qualityEl) qualityEl.innerText = `Quality: ${this.gameState.models.quality.toFixed(2)}`;
+    if (tpsEl) tpsEl.innerText = this.gameState.models.tps;
   }
 
   setupUI() {
@@ -431,5 +451,61 @@ export class MainScene extends Phaser.Scene {
     btnBuildS2.onclick = () => { setMode('build', 'SERVER_T2', 2, 1); btnBuildS2.classList.add('active'); };
     btnBuildDesk.onclick = () => { setMode('build', 'DESK', 1, 1); btnBuildDesk.classList.add('active'); };
     btnExpand.onclick = () => { setMode('expand'); btnExpand.classList.add('active'); };
+
+    const btnSetTrain = document.getElementById('btn-set-train');
+    const trainInput = document.getElementById('train-rate-input');
+    const btnSellData = document.getElementById('btn-sell-data');
+    const btnInfoClose = document.getElementById('btn-info-close');
+    const btnInfoUpgrade = document.getElementById('btn-info-upgrade');
+    const infoPanel = document.getElementById('info-panel');
+
+    if (btnSetTrain) {
+      btnSetTrain.onclick = async () => {
+        const rate = parseInt(trainInput.value, 10);
+        if (isNaN(rate) || rate < 0) {
+          this.showError('Invalid training rate');
+          return;
+        }
+        try {
+          const res = await setTrainingRate(rate);
+          if (res.success) {
+            this.gameState = res.gameState;
+            this.updateHUD();
+          } else {
+            this.showError(res.message);
+          }
+        } catch(e) {
+          this.showError('Server Error');
+        }
+      };
+    }
+
+    if (btnSellData) {
+      btnSellData.onclick = async () => {
+        try {
+          const res = await sellData();
+          if (res.success) {
+            this.gameState = res.gameState;
+            this.updateHUD();
+          } else {
+            this.showError(res.message);
+          }
+        } catch(e) {
+          this.showError('Server Error');
+        }
+      };
+    }
+
+    if (btnInfoClose) {
+      btnInfoClose.onclick = () => {
+        if (infoPanel) infoPanel.style.display = 'none';
+      };
+    }
+
+    if (btnInfoUpgrade) {
+      btnInfoUpgrade.onclick = () => {
+        this.showError('Upgrade action not implemented in backend yet.');
+      };
+    }
   }
 }

@@ -41,9 +41,9 @@
 
 ## Phase 4: Core Simulation & UI Interaction
 - [x] **State Syncing**: Frontend periodically polls `GET /api/state` (or uses WebSockets) to update the HTML HUD (Money, Data, Users, Compute, Model Quality).
-- [ ] **Model Training System**: UI to allocate Compute to train the AI model via the API.
-- [ ] **Build Menu**: HTML menu to select buildings and expansions.
-- [ ] **Interaction**: Click handlers on placed infrastructure to view details/upgrade.
+- [x] **Model Training System**: UI to allocate Compute to train the AI model via the API.
+- [x] **Build Menu**: HTML menu to select buildings and expansions.
+- [x] **Interaction**: Click handlers on placed infrastructure to view details/upgrade.
 
 ## Phase 5: Multiplayer & Leaderboards
 - [ ] **Authentication (Basic)**: Simple user accounts or session tokens to distinguish players.
