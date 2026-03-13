@@ -24,13 +24,13 @@
 - [x] **Basic Phaser Setup**: Create the main Phaser Game config, rendering a simple empty scene.
 
 ## Phase 2: Authoritative State & Backend API
-- [ ] **Database/State**: For now, implement in-memory Game State on the Express Server (or a simple SQLite/JSON store), keeping track of each player's Money, Compute, Data, Users, Models, and Grid Layout.
-- [ ] **REST API**: Build routes:
-   - [ ] `GET /api/state` - Fetch current game state.
-   - [ ] `POST /api/build` - Request to place a building. Subtracts money if valid.
-   - [ ] `POST /api/train` - Request to start training a model.
-   - [ ] `POST /api/sell` - Request to sell data.
-- [ ] **Game Loop (Server-Side Tick)**: Implement a background tick system on the Node.js server (e.g., every 1 second) to calculate resource generation and user acquisition.
+- [x] **Database/State**: For now, implement in-memory Game State on the Express Server (or a simple SQLite/JSON store), keeping track of each player's Money, Compute, Data, Users, Models, and Grid Layout.
+- [x] **REST API**: Build routes:
+   - [x] `GET /api/state` - Fetch current game state.
+   - [x] `POST /api/build` - Request to place a building. Subtracts money if valid.
+   - [x] `POST /api/train` - Request to start training a model.
+   - [x] `POST /api/sell` - Request to sell data.
+- [x] **Game Loop (Server-Side Tick)**: Implement a background tick system on the Node.js server (e.g., every 1 second) to calculate resource generation and user acquisition.
 
 ## Phase 3: Isometric Grid & Base Building (Frontend)
 - [ ] **Grid Setup**: Implement an isometric tilemap system in Phaser using placeholder graphics.
