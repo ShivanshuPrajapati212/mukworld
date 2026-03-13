@@ -21,6 +21,7 @@ export class MainScene extends Phaser.Scene {
 
   generateIsoGraphics() {
     const graphics = this.add.graphics();
+    this.textureOrigins = {};
     
     // Draw base tile
     graphics.fillStyle(0x888888, 1);
@@ -28,6 +29,7 @@ export class MainScene extends Phaser.Scene {
     this.drawIsoDiamond(graphics, TILE_WIDTH, TILE_HEIGHT);
     graphics.generateTexture('tile', TILE_WIDTH, TILE_HEIGHT);
     graphics.clear();
+    this.textureOrigins['tile'] = { originX: 0.5, originY: 0 };
 
     // Draw locked tile
     graphics.fillStyle(0x333333, 1);
@@ -35,27 +37,90 @@ export class MainScene extends Phaser.Scene {
     this.drawIsoDiamond(graphics, TILE_WIDTH, TILE_HEIGHT);
     graphics.generateTexture('tile-locked', TILE_WIDTH, TILE_HEIGHT);
     graphics.clear();
+    this.textureOrigins['tile-locked'] = { originX: 0.5, originY: 0 };
 
-    // Draw Server T1 shape
-    graphics.fillStyle(0x3498db, 1);
-    graphics.lineStyle(1, 0x2980b9, 1);
-    graphics.fillRect(16, -32, 32, 64); // simple block
-    graphics.generateTexture('SERVER_T1', TILE_WIDTH, TILE_HEIGHT + 32);
-    graphics.clear();
+    // Draw SERVER_T1 shape (1x1, height 40, blue)
+    this.generateIsoBlockTexture('SERVER_T1', graphics, 1, 1, 40, 0x3498db);
 
-    // Draw Server T2 shape
-    graphics.fillStyle(0x9b59b6, 1);
-    graphics.lineStyle(1, 0x8e44ad, 1);
-    graphics.fillRect(16, -32, 96, 64);
-    graphics.generateTexture('SERVER_T2', TILE_WIDTH * 2, TILE_HEIGHT + 32);
-    graphics.clear();
+    // Draw SERVER_T2 shape (2x1, height 40, purple)
+    this.generateIsoBlockTexture('SERVER_T2', graphics, 2, 1, 40, 0x9b59b6);
 
-    // Draw Desk shape
-    graphics.fillStyle(0x2ecc71, 1);
-    graphics.lineStyle(1, 0x27ae60, 1);
-    graphics.fillRect(16, -16, 32, 32);
-    graphics.generateTexture('DESK', TILE_WIDTH, TILE_HEIGHT + 16);
+    // Draw DESK shape (1x1, height 15, green)
+    this.generateIsoBlockTexture('DESK', graphics, 1, 1, 15, 0x2ecc71);
+  }
+
+  generateIsoBlockTexture(key, graphics, w, h, z, baseColor) {
     graphics.clear();
+    
+    // Lighten and darken helpers
+    const colorObj = Phaser.Display.Color.IntegerToColor(baseColor);
+    const topColor = colorObj.clone().lighten(15).color;
+    const leftColor = colorObj.color;
+    const rightColor = colorObj.clone().darken(15).color;
+
+    // We need to shift all coordinates by (-minX, -minY) to fit on canvas
+    const minX = -h * 32;
+    const minY = -z;
+    const shiftX = -minX;
+    const shiftY = -minY;
+
+    const pT = { x: shiftX, y: shiftY };
+    const pR = { x: w * 32 + shiftX, y: w * 16 + shiftY };
+    const pB = { x: (w - h) * 32 + shiftX, y: (w + h) * 16 + shiftY };
+    const pL = { x: -h * 32 + shiftX, y: h * 16 + shiftY };
+
+    // Draw Right Face
+    if (z > 0) {
+      graphics.fillStyle(rightColor, 1);
+      graphics.lineStyle(1, 0x000000, 0.2); // subtle border
+      graphics.beginPath();
+      graphics.moveTo(pR.x, pR.y);
+      graphics.lineTo(pB.x, pB.y);
+      graphics.lineTo(pB.x, pB.y - z);
+      graphics.lineTo(pR.x, pR.y - z);
+      graphics.closePath();
+      graphics.fillPath();
+      graphics.strokePath();
+    }
+
+    // Draw Left Face
+    if (z > 0) {
+      graphics.fillStyle(leftColor, 1);
+      graphics.lineStyle(1, 0x000000, 0.2);
+      graphics.beginPath();
+      graphics.moveTo(pL.x, pL.y);
+      graphics.lineTo(pB.x, pB.y);
+      graphics.lineTo(pB.x, pB.y - z);
+      graphics.lineTo(pL.x, pL.y - z);
+      graphics.closePath();
+      graphics.fillPath();
+      graphics.strokePath();
+    }
+
+    // Draw Top Face
+    graphics.fillStyle(topColor, 1);
+    graphics.lineStyle(1, 0x000000, 0.2);
+    graphics.beginPath();
+    graphics.moveTo(pT.x, pT.y - z);
+    graphics.lineTo(pR.x, pR.y - z);
+    graphics.lineTo(pB.x, pB.y - z);
+    graphics.lineTo(pL.x, pL.y - z);
+    graphics.closePath();
+    graphics.fillPath();
+    graphics.strokePath();
+
+    const texWidth = (w + h) * 32;
+    const texHeight = (w + h) * 16 + z;
+    
+    // Generate the texture
+    graphics.generateTexture(key, texWidth, texHeight);
+    graphics.clear();
+    
+    // Store origin info so we can set it when applying the texture
+    this.textureOrigins[key] = {
+      originX: shiftX / texWidth,
+      originY: shiftY / texHeight
+    };
   }
 
   drawIsoDiamond(graphics, width, height) {
@@ -130,6 +195,7 @@ export class MainScene extends Phaser.Scene {
         const isoPos = this.cartesianToIsometric(x, y);
         
         const tile = this.add.sprite(isoPos.x, isoPos.y, tex).setOrigin(0.5, 0);
+        tile.setDepth(x + y);
         this.gridGroup.add(tile);
       }
     }
@@ -140,9 +206,10 @@ export class MainScene extends Phaser.Scene {
     // Draw buildings
     grid.forEach(b => {
       const isoPos = this.cartesianToIsometric(b.x, b.y);
-      const buildingSprite = this.add.sprite(isoPos.x, isoPos.y, b.type).setOrigin(0.5, 1);
+      const origin = this.textureOrigins[b.type] || { originX: 0.5, originY: 1 };
+      const buildingSprite = this.add.sprite(isoPos.x, isoPos.y, b.type).setOrigin(origin.originX, origin.originY);
       // Adjust depth so it overlays tiles correctly
-      buildingSprite.setDepth(b.x + b.y + 10);
+      buildingSprite.setDepth(b.x + b.width + b.y + b.height + 1);
       this.buildingGroup.add(buildingSprite);
     });
 
@@ -202,14 +269,20 @@ export class MainScene extends Phaser.Scene {
 
       if (this.mode === 'build') {
         // Change graphic depending on build size (using scaling or different texture)
-        this.hoverIndicator.setTexture('tile'); // could be adapted for larger sizes
-        this.hoverIndicator.setScale(this.buildWidth, this.buildHeight); // approximation
+        this.hoverIndicator.setTexture(this.buildType);
+        const origin = this.textureOrigins[this.buildType] || { originX: 0.5, originY: 1 };
+        this.hoverIndicator.setOrigin(origin.originX, origin.originY);
+        this.hoverIndicator.setScale(1);
+        this.hoverIndicator.setDepth(1000); // always on top
         
         let isValid = this.isValidPlacement(cartPos.x, cartPos.y, this.buildWidth, this.buildHeight);
         this.hoverIndicator.setTint(isValid ? 0x00ff00 : 0xff0000);
       } else if (this.mode === 'expand') {
         this.hoverIndicator.setTexture('tile');
+        this.hoverIndicator.setOrigin(0.5, 0);
         this.hoverIndicator.setScale(1);
+        this.hoverIndicator.setDepth(1000);
+        
         let isValid = this.isValidExpansion(cartPos.x, cartPos.y);
         this.hoverIndicator.setTint(isValid ? 0x00ff00 : 0xff0000);
       }
