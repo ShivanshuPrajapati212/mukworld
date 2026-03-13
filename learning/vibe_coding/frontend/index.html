@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Company Simulator</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #1a1a1a;
+        color: white;
+        font-family: sans-serif;
+        overflow: hidden; /* Prevent scrollbars from game canvas */
+      }
+      #game-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 1; /* Under UI */
+      }
+      #ui-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none; /* Let clicks pass through to game canvas by default */
+        z-index: 10; /* Over game */
+      }
+      /* Example UI element */
+      .ui-panel {
+        pointer-events: auto; /* Re-enable clicks for actual UI blocks */
+        background: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        margin: 10px;
+        border-radius: 5px;
+        display: inline-block;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-container"></div>
+    <div id="ui-container">
+      <!-- HTML UI goes here -->
+      <div class="ui-panel">
+        <h1>AI Company Simulator</h1>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
