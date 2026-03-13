@@ -23,8 +23,16 @@ let gameState = {
   models: { quality: 1, name: 'Basic Model', tps: 0 }, // tps = training per second
   gridWidth: 20,
   gridHeight: 20,
+  unlockedTiles: [], // will initialize below
   grid: [] // will represent buildings placed
 };
+
+// Initialize starting unlocked area (5x5 in the center of 20x20)
+for (let x = 7; x < 12; x++) {
+  for (let y = 7; y < 12; y++) {
+    gameState.unlockedTiles.push(`${x},${y}`);
+  }
+}
 
 app.get('/api/state', (req, res) => {
   res.json(gameState);
@@ -38,12 +46,27 @@ app.post('/api/build', (req, res) => {
     return res.status(400).json({ success: false, message: 'Invalid building type' });
   }
 
-  // Basic bounds validation
-  if (x < 0 || y < 0 || x + building.width > gameState.gridWidth || y + building.height > gameState.gridHeight) {
-    return res.status(400).json({ success: false, message: 'Building out of bounds' });
+  // Basic bounds validation and unlocked tiles
+  for (let bx = x; bx < x + building.width; bx++) {
+    for (let by = y; by < y + building.height; by++) {
+      if (bx < 0 || by < 0 || bx >= gameState.gridWidth || by >= gameState.gridHeight) {
+        return res.status(400).json({ success: false, message: 'Building out of bounds' });
+      }
+      if (!gameState.unlockedTiles.includes(`${bx},${by}`)) {
+        return res.status(400).json({ success: false, message: 'Tile is not unlocked' });
+      }
+    }
   }
-  
-  // TODO: Add collision detection with other buildings later
+
+  // Collision detection
+  const isColliding = gameState.grid.some(b => {
+    return x < b.x + b.width && x + building.width > b.x &&
+           y < b.y + b.height && y + building.height > b.y;
+  });
+
+  if (isColliding) {
+    return res.status(400).json({ success: false, message: 'Building collides with another building' });
+  }
 
   if (gameState.money >= building.cost) {
     gameState.money -= building.cost;
@@ -51,6 +74,42 @@ app.post('/api/build', (req, res) => {
     res.json({ success: true, message: 'Building placed', gameState });
   } else {
     res.status(400).json({ success: false, message: 'Not enough money' });
+  }
+});
+
+app.post('/api/expand', (req, res) => {
+  const { x, y } = req.body;
+
+  if (x < 0 || y < 0 || x >= gameState.gridWidth || y >= gameState.gridHeight) {
+    return res.status(400).json({ success: false, message: 'Tile out of bounds' });
+  }
+
+  const tileKey = `${x},${y}`;
+  if (gameState.unlockedTiles.includes(tileKey)) {
+    return res.status(400).json({ success: false, message: 'Tile already unlocked' });
+  }
+
+  // Check if adjacent to an already unlocked tile
+  const isAdjacent = 
+    gameState.unlockedTiles.includes(`${x-1},${y}`) ||
+    gameState.unlockedTiles.includes(`${x+1},${y}`) ||
+    gameState.unlockedTiles.includes(`${x},${y-1}`) ||
+    gameState.unlockedTiles.includes(`${x},${y+1}`);
+
+  if (!isAdjacent) {
+    return res.status(400).json({ success: false, message: 'Must expand adjacent to an unlocked tile' });
+  }
+
+  // Calculate cost (e.g., base cost + 10 for every tile unlocked beyond the initial 25)
+  const expandedCount = Math.max(0, gameState.unlockedTiles.length - 25);
+  const cost = 50 + (expandedCount * 10);
+
+  if (gameState.money >= cost) {
+    gameState.money -= cost;
+    gameState.unlockedTiles.push(tileKey);
+    res.json({ success: true, message: 'Tile unlocked', gameState });
+  } else {
+    res.status(400).json({ success: false, message: 'Not enough money to expand' });
   }
 });
 

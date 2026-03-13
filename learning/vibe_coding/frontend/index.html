@@ -39,14 +39,72 @@
         border-radius: 5px;
         display: inline-block;
       }
+      .hud {
+        display: flex;
+        gap: 20px;
+        font-size: 18px;
+        font-weight: bold;
+      }
+      .controls {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 10px;
+      }
+      button {
+        background-color: #4CAF50;
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: 0.3s;
+      }
+      button:hover { background-color: #45a049; }
+      button.active { background-color: #008CBA; }
+
+      #error-popup {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #f44336;
+        color: white;
+        padding: 15px;
+        border-radius: 5px;
+        font-weight: bold;
+        display: none;
+        pointer-events: none;
+        transition: opacity 0.3s;
+        z-index: 100;
+      }
     </style>
   </head>
   <body>
     <div id="game-container"></div>
     <div id="ui-container">
-      <!-- HTML UI goes here -->
-      <div class="ui-panel">
-        <h1>AI Company Simulator</h1>
+      <div id="error-popup">Error Message Here</div>
+
+      <div class="ui-panel hud">
+        <div id="hud-money">Money: $Loading...</div>
+        <div id="hud-compute">Compute: -</div>
+        <div id="hud-data">Data: -</div>
+        <div id="hud-users">Users: -</div>
+        <div id="hud-quality">Quality: -</div>
+      </div>
+
+      <div class="ui-panel controls">
+        <button id="btn-cancel">Cancel Mode</button>
+        <button id="btn-build-server1">Build Server T1 ($100)</button>
+        <button id="btn-build-server2">Build Server T2 ($500)</button>
+        <button id="btn-build-desk">Build Desk ($50)</button>
+        <button id="btn-expand">Expand Room</button>
       </div>
     </div>
     <script type="module" src="/src/main.js"></script>

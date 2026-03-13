@@ -11,6 +11,12 @@ describe('Backend API', () => {
     gameState.models = { quality: 1, name: 'Basic Model', tps: 0 };
     gameState.gridWidth = 20;
     gameState.gridHeight = 20;
+    gameState.unlockedTiles = [];
+    for (let x = 7; x < 12; x++) {
+      for (let y = 7; y < 12; y++) {
+        gameState.unlockedTiles.push(`${x},${y}`);
+      }
+    }
     gameState.grid = [];
   });
 
@@ -21,7 +27,7 @@ describe('Backend API', () => {
   });
 
   it('POST /api/build should subtract money and add to grid', async () => {
-    const res = await request(app).post('/api/build').send({ type: 'SERVER_T1', x: 0, y: 0 });
+    const res = await request(app).post('/api/build').send({ type: 'SERVER_T1', x: 7, y: 7 });
     expect(res.statusCode).toEqual(200);
     expect(res.body.success).toBe(true);
     expect(gameState.money).toBe(400); // 500 - 100
@@ -35,9 +41,16 @@ describe('Backend API', () => {
     expect(res.body.success).toBe(false);
   });
 
+  it('POST /api/build should fail if tile is not unlocked', async () => {
+    const res = await request(app).post('/api/build').send({ type: 'SERVER_T1', x: 0, y: 0 });
+    expect(res.statusCode).toEqual(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe('Tile is not unlocked');
+  });
+
   it('POST /api/build should fail if not enough money', async () => {
     gameState.money = 50; 
-    const res = await request(app).post('/api/build').send({ type: 'SERVER_T1', x: 0, y: 0 });
+    const res = await request(app).post('/api/build').send({ type: 'SERVER_T1', x: 7, y: 7 });
     expect(res.statusCode).toEqual(400);
     expect(res.body.success).toBe(false);
   });
@@ -54,5 +67,20 @@ describe('Backend API', () => {
     expect(res.statusCode).toEqual(200);
     expect(gameState.data).toBe(0);
     expect(gameState.money).toBe(520); // 500 + (10 * 2)
+  });
+
+  it('POST /api/expand should unlock a tile and cost money', async () => {
+    const res = await request(app).post('/api/expand').send({ x: 6, y: 7 });
+    expect(res.statusCode).toEqual(200);
+    expect(res.body.success).toBe(true);
+    expect(gameState.money).toBe(450); // 500 - 50 (first expansion)
+    expect(gameState.unlockedTiles).toContain('6,7');
+  });
+
+  it('POST /api/expand should fail if not adjacent to unlocked tile', async () => {
+    const res = await request(app).post('/api/expand').send({ x: 0, y: 0 });
+    expect(res.statusCode).toEqual(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe('Must expand adjacent to an unlocked tile');
   });
 });

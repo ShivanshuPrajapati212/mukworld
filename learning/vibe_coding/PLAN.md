@@ -33,14 +33,14 @@
 - [x] **Game Loop (Server-Side Tick)**: Implement a background tick system on the Node.js server (e.g., every 1 second) to calculate resource generation and user acquisition.
 
 ## Phase 3: Isometric Grid & Base Building (Frontend)
-- [ ] **Grid Setup**: Implement an isometric tilemap system in Phaser using placeholder graphics.
-- [ ] **Camera Controls**: Add panning and semantic zooming.
-- [ ] **Placement System**: "Build Mode" to place structural entities (Servers, Trainers) onto the grid.
-- [ ] **Server Validation**: When placing a building, send a request to `POST /api/build`. Only render the building permanently if the server responds with a success status.
-- [ ] **Room Expansion**: API endpoint to spend money to unlock more tiles in the room.
+- [x] **Grid Setup**: Implement an isometric tilemap system in Phaser using placeholder graphics.
+- [x] **Camera Controls**: Add panning and semantic zooming.
+- [x] **Placement System**: "Build Mode" to place structural entities (Servers, Trainers) onto the grid.
+- [x] **Server Validation**: When placing a building, send a request to `POST /api/build`. Only render the building permanently if the server responds with a success status.
+- [x] **Room Expansion**: API endpoint to spend money to unlock more tiles in the room.
 
 ## Phase 4: Core Simulation & UI Interaction
-- [ ] **State Syncing**: Frontend periodically polls `GET /api/state` (or uses WebSockets) to update the HTML HUD (Money, Data, Users, Compute, Model Quality).
+- [x] **State Syncing**: Frontend periodically polls `GET /api/state` (or uses WebSockets) to update the HTML HUD (Money, Data, Users, Compute, Model Quality).
 - [ ] **Model Training System**: UI to allocate Compute to train the AI model via the API.
 - [ ] **Build Menu**: HTML menu to select buildings and expansions.
 - [ ] **Interaction**: Click handlers on placed infrastructure to view details/upgrade.
