@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { fetchState, buildInfrastructure, expandRoom, setTrainingRate, sellData } from '../api/index.js';
+import { fetchState, buildInfrastructure, expandRoom, setTrainingRate, sellData, login, register, fetchLeaderboard } from '../api/index.js';
 
 const TILE_WIDTH = 64;
 const TILE_HEIGHT = 32;
@@ -139,20 +139,45 @@ export class MainScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#2d2d2d');
     this.cameras.main.setZoom(1);
 
-    // Fetch initial state
-    try {
-      this.gameState = await fetchState();
-    } catch (e) {
-      this.showError('Could not connect to server.');
-      return;
-    }
-
     this.gridGroup = this.add.group();
     this.buildingGroup = this.add.group();
 
     // Create a hover indicator
     this.hoverIndicator = this.add.sprite(0, 0, 'tile').setOrigin(0.5, 0).setAlpha(0.6).setDepth(100);
     this.hoverIndicator.setVisible(false);
+
+    // Initialize inputs silently to prevent update error
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.keys = this.input.keyboard.addKeys('W,A,S,D');
+
+    this.checkAuthAndInit();
+  }
+
+  async checkAuthAndInit() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      document.getElementById('auth-overlay').style.display = 'flex';
+      this.setupAuthUI();
+      return;
+    }
+
+    document.getElementById('auth-overlay').style.display = 'none';
+    document.getElementById('leaderboard-mini').style.display = 'block';
+
+    // Fetch initial state
+    try {
+      this.gameState = await fetchState();
+      if (this.gameState.success === false) {
+        // Token likely invalid or expired
+        localStorage.removeItem('token');
+        localStorage.removeItem('username');
+        this.checkAuthAndInit(); // Loop back to auth
+        return;
+      }
+    } catch (e) {
+      this.showError('Could not connect to server.');
+      return;
+    }
 
     this.drawWorld();
 
@@ -167,20 +192,106 @@ export class MainScene extends Phaser.Scene {
       delay: 2000,
       callback: async () => {
         try {
-          this.gameState = await fetchState();
+          const res = await fetchState();
+          if (res.success === false) return; // Silent fail on invalid auth mid-game
+          
+          this.gameState = res;
           this.updateHUD();
           // Ideally we'd only redraw what changed, but for now redraw world
           this.drawWorld();
+          this.updateLeaderboardUI();
         } catch (e) {
           // silent fail on poll if server goes down
         }
       },
       loop: true
     });
+
+    // Initial leaderboard load
+    this.updateLeaderboardUI();
+  }
+
+  setupAuthUI() {
+    const btnLogin = document.getElementById('btn-login');
+    const btnRegister = document.getElementById('btn-register');
+    const inputUser = document.getElementById('auth-username');
+    const inputPass = document.getElementById('auth-password');
+    const errorMsg = document.getElementById('auth-error');
+
+    const handleAuth = async (action) => {
+      const username = inputUser.value;
+      const password = inputPass.value;
+      if (!username || !password) {
+        errorMsg.innerText = 'Username and password required';
+        errorMsg.style.display = 'block';
+        return;
+      }
+      try {
+        const res = await (action === 'login' ? login : register)(username, password);
+        if (res.success) {
+          localStorage.setItem('token', res.token);
+          localStorage.setItem('username', username);
+          errorMsg.style.display = 'none';
+          this.checkAuthAndInit(); // Re-init
+        } else {
+          errorMsg.innerText = res.message;
+          errorMsg.style.display = 'block';
+        }
+      } catch (e) {
+        errorMsg.innerText = 'Server Error';
+        errorMsg.style.display = 'block';
+      }
+    };
+
+    btnLogin.onclick = () => handleAuth('login');
+    btnRegister.onclick = () => handleAuth('register');
+  }
+
+  async updateLeaderboardUI() {
+    try {
+      const res = await fetchLeaderboard();
+      if (!res.success) return;
+      
+      const lb = res.leaderboard;
+      const myUsername = localStorage.getItem('username');
+      
+      // Update Mini
+      const miniContent = document.getElementById('lb-mini-content');
+      let miniHTML = '';
+      for (let i = 0; i < Math.min(3, lb.length); i++) {
+        miniHTML += `<div class="lb-row"><div>${i+1}. ${lb[i].username}</div><div>$${Math.floor(lb[i].money)}</div></div>`;
+      }
+      miniContent.innerHTML = miniHTML;
+      
+      const myIndex = lb.findIndex(x => x.username === myUsername);
+      const myRankEl = document.getElementById('lb-my-rank');
+      if (myIndex !== -1) {
+        myRankEl.innerText = `Your Rank: ${myIndex + 1}`;
+      } else {
+        myRankEl.innerText = `Your Rank: 50+`;
+      }
+
+      // Update Full Modal if visible
+      if (document.getElementById('leaderboard-full-modal').style.display === 'block') {
+        const fullContent = document.getElementById('lb-full-content');
+        let fullHTML = '';
+        lb.forEach(row => {
+          fullHTML += `<div class="lb-full-row">
+            <span style="width:10%">${row.rank}</span>
+            <span style="flex:1; color:${row.username===myUsername?'#4CAF50':'inherit'}">${row.username}</span>
+            <span style="width:30%; text-align:right">$${Math.floor(row.money)}</span>
+          </div>`;
+        });
+        fullContent.innerHTML = fullHTML;
+      }
+      
+    } catch (e) {
+      console.error('Failed to fetch leaderboard', e);
+    }
   }
 
   drawWorld() {
-    if (!this.gameState) return;
+    if (!this.gameState || !this.gameState.grid) return;
 
     this.gridGroup.clear(true, true);
     this.buildingGroup.clear(true, true);
@@ -248,10 +359,6 @@ export class MainScene extends Phaser.Scene {
       this.cameras.main.scrollX -= (pointer.x - pointer.prevPosition.x) / this.cameras.main.zoom;
       this.cameras.main.scrollY -= (pointer.y - pointer.prevPosition.y) / this.cameras.main.zoom;
     });
-
-    // Panning (Keyboard)
-    this.cursors = this.input.keyboard.createCursorKeys();
-    this.keys = this.input.keyboard.addKeys('W,A,S,D');
 
     // Hover
     this.input.on('pointermove', (pointer) => {
@@ -388,6 +495,8 @@ export class MainScene extends Phaser.Scene {
   }
 
   update(time, delta) {
+    if (!this.cursors || !this.keys) return;
+    
     const cam = this.cameras.main;
     const speed = 500 * (delta / 1000); // 500 pixels per sec
 
@@ -459,6 +568,22 @@ export class MainScene extends Phaser.Scene {
     const btnInfoUpgrade = document.getElementById('btn-info-upgrade');
     const infoPanel = document.getElementById('info-panel');
 
+    const btnShowFullLb = document.getElementById('btn-show-full-lb');
+    const btnCloseLb = document.getElementById('btn-close-lb');
+    const fullLbModal = document.getElementById('leaderboard-full-modal');
+
+    if (btnShowFullLb) {
+      btnShowFullLb.onclick = () => {
+        fullLbModal.style.display = 'block';
+        this.updateLeaderboardUI();
+      };
+    }
+    if (btnCloseLb) {
+      btnCloseLb.onclick = () => {
+        fullLbModal.style.display = 'none';
+      };
+    }
+
     if (btnSetTrain) {
       btnSetTrain.onclick = async () => {
         const rate = parseInt(trainInput.value, 10);
@@ -487,6 +612,7 @@ export class MainScene extends Phaser.Scene {
           if (res.success) {
             this.gameState = res.gameState;
             this.updateHUD();
+            this.updateLeaderboardUI();
           } else {
             this.showError(res.message);
           }

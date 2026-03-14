@@ -115,6 +115,97 @@
       }
       .info-panel h3 { margin-top: 0; }
       .info-panel p { margin-bottom: 15px; line-height: 1.4; }
+      
+      /* Auth Form Styles */
+      #auth-overlay {
+        position: absolute;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        pointer-events: auto;
+      }
+      .auth-box {
+        background: #222;
+        padding: 30px;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 0 15px rgba(0,0,0,0.5);
+      }
+      .auth-box input {
+        display: block;
+        margin: 10px auto;
+        padding: 10px;
+        width: 80%;
+        border-radius: 4px;
+        border: none;
+      }
+      .auth-box button {
+        margin: 5px;
+      }
+
+      /* Leaderboard Styles */
+      #leaderboard-mini {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #444;
+        min-width: 150px;
+        pointer-events: auto;
+      }
+      
+      #leaderboard-mini h3 {
+        margin: 0 0 5px 0;
+        font-size: 16px;
+        color: gold;
+        text-align: center;
+      }
+      
+      .lb-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 14px;
+        margin-bottom: 3px;
+      }
+      
+      #lb-my-rank {
+        border-top: 1px dashed #666;
+        margin-top: 5px;
+        padding-top: 5px;
+        font-weight: bold;
+        color: #4CAF50;
+      }
+
+      #leaderboard-full-modal {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #222;
+        padding: 20px;
+        border-radius: 8px;
+        width: 400px;
+        max-height: 80vh;
+        overflow-y: auto;
+        display: none;
+        z-index: 200;
+        pointer-events: auto;
+        box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        border: 1px solid #555;
+      }
+      #leaderboard-full-modal h2 { margin-top: 0; color: gold; text-align: center; }
+      .lb-full-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px;
+        border-bottom: 1px solid #444;
+      }
+      .lb-full-row:nth-child(even) { background: #333; }
     </style>
   </head>
   <body>
@@ -157,6 +248,38 @@
           <button id="btn-info-close" style="background-color:#777;">Close</button>
           <button id="btn-info-upgrade" style="background-color:#f39c12;">Upgrade</button>
         </div>
+      </div>
+
+      <!-- Auth Overlay -->
+      <div id="auth-overlay">
+        <div class="auth-box">
+          <h2>Welcome to AI Corp</h2>
+          <p id="auth-error" style="color:red; display:none;"></p>
+          <input type="text" id="auth-username" placeholder="Company Name (Username)">
+          <input type="password" id="auth-password" placeholder="Password">
+          <button id="btn-login" style="background-color:#2196F3;">Login</button>
+          <button id="btn-register" style="background-color:#4CAF50;">Register</button>
+        </div>
+      </div>
+
+      <!-- Mini Leaderboard -->
+      <div id="leaderboard-mini" style="display:none;">
+        <h3>Top AI Companies</h3>
+        <div id="lb-mini-content">Loading...</div>
+        <div id="lb-my-rank">Your Rank: -</div>
+        <button id="btn-show-full-lb" style="margin-top:10px; width:100%; font-size: 12px; padding: 5px;">View Full</button>
+      </div>
+
+      <!-- Full Leaderboard -->
+      <div id="leaderboard-full-modal">
+        <h2>Global Leaderboard</h2>
+        <div style="display:flex; justify-content:space-between; font-weight:bold; border-bottom:2px solid; padding-bottom:5px;">
+          <span style="width:10%">#</span>
+          <span style="flex:1">Company</span>
+          <span style="width:30%; text-align:right">Net Worth</span>
+        </div>
+        <div id="lb-full-content" style="margin-top:10px; margin-bottom: 15px;"></div>
+        <button id="btn-close-lb" style="width:100%; background-color:#777;">Close</button>
       </div>
     </div>
     <script type="module" src="/src/main.js"></script>

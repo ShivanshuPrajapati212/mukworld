@@ -46,9 +46,9 @@
 - [x] **Interaction**: Click handlers on placed infrastructure to view details/upgrade.
 
 ## Phase 5: Multiplayer & Leaderboards
-- [ ] **Authentication (Basic)**: Simple user accounts or session tokens to distinguish players.
-- [ ] **Leaderboard API**: `GET /api/leaderboard` returns the top ranked players.
-- [ ] **Leaderboard UI**: HTML overlay showing top players fetched from the server.
+- [x] **Authentication (Basic)**: Simple user accounts or session tokens to distinguish players.
+- [x] **Leaderboard API**: `GET /api/leaderboard` returns the top ranked players.
+- [x] **Leaderboard UI**: HTML overlay showing top players fetched from the server.
 
 ## Phase 6: Polish
 - [ ] **Sprites**: Replace placeholder blocks with actual pixel art sprites.
