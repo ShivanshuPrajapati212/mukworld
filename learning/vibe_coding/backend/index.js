@@ -61,8 +61,9 @@ const activeSessions = new Map(); // userId (string) -> { state: MongooseDoc, la
 // Helpers to load a default state for new registrations
 function getDefaultUnlockedTiles() {
   const tiles = [];
-  for (let x = 7; x < 12; x++) {
-    for (let y = 7; y < 12; y++) {
+  // 10x10 starting block from (0,0) to (9,9)
+  for (let x = 0; x < 10; x++) {
+    for (let y = 0; y < 10; y++) {
       tiles.push(`${x},${y}`);
     }
   }
@@ -175,8 +176,9 @@ app.post('/api/build', authMiddleware, async (req, res) => {
   // Basic bounds validation and unlocked tiles
   for (let bx = x; bx < x + building.width; bx++) {
     for (let by = y; by < y + building.height; by++) {
-      if (bx < 0 || by < 0 || bx >= state.gridWidth || by >= state.gridHeight) {
-        return res.status(400).json({ success: false, message: 'Building out of bounds' });
+      // Allow building anywhere down the positive axis as long as it's unlocked
+      if (bx < 0 || by < 0) {
+        return res.status(400).json({ success: false, message: 'Building out of bounds (must be >= 0)' });
       }
       if (!state.unlockedTiles.includes(`${bx},${by}`)) {
         return res.status(400).json({ success: false, message: 'Tile is not unlocked' });
@@ -209,8 +211,8 @@ app.post('/api/expand', authMiddleware, async (req, res) => {
   const { x, y } = req.body;
   const state = await loadState(req.userId);
 
-  if (x < 0 || y < 0 || x >= state.gridWidth || y >= state.gridHeight) {
-    return res.status(400).json({ success: false, message: 'Tile out of bounds' });
+  if (x < 0 || y < 0) {
+    return res.status(400).json({ success: false, message: 'Tile out of bounds (must be >= 0)' });
   }
 
   const tileKey = `${x},${y}`;
@@ -229,13 +231,18 @@ app.post('/api/expand', authMiddleware, async (req, res) => {
     return res.status(400).json({ success: false, message: 'Must expand adjacent to an unlocked tile' });
   }
 
-  const expandedCount = Math.max(0, state.unlockedTiles.length - 25);
+  // Base 10x10 = 100 tiles.
+  const expandedCount = Math.max(0, state.unlockedTiles.length - 100);
   const cost = 50 + (expandedCount * 10);
 
   if (state.money >= cost) {
     state.money -= cost;
     state.unlockedTiles.push(tileKey);
+    // Expand theoretical size to render if they build super far out (Frontend bound calculation fix)
+    state.gridWidth = Math.max(state.gridWidth, x + 1);
+    state.gridHeight = Math.max(state.gridHeight, y + 1);
     state.markModified('unlockedTiles');
+    
     res.json({ success: true, message: 'Tile unlocked', gameState: state });
   } else {
     res.status(400).json({ success: false, message: 'Not enough money to expand' });

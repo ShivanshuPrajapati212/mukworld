@@ -296,20 +296,19 @@ export class MainScene extends Phaser.Scene {
     this.gridGroup.clear(true, true);
     this.buildingGroup.clear(true, true);
 
-    const { gridWidth, gridHeight, unlockedTiles, grid } = this.gameState;
+    const { unlockedTiles, grid } = this.gameState;
 
     // Draw grid map
-    for (let x = 0; x < gridWidth; x++) {
-      for (let y = 0; y < gridHeight; y++) {
-        const isUnlocked = unlockedTiles.includes(`${x},${y}`);
-        const tex = isUnlocked ? 'tile' : 'tile-locked';
-        const isoPos = this.cartesianToIsometric(x, y);
-        
-        const tile = this.add.sprite(isoPos.x, isoPos.y, tex).setOrigin(0.5, 0);
-        tile.setDepth(x + y);
-        this.gridGroup.add(tile);
-      }
-    }
+    unlockedTiles.forEach(tileKey => {
+      const [xStr, yStr] = tileKey.split(',');
+      const x = parseInt(xStr, 10);
+      const y = parseInt(yStr, 10);
+      const isoPos = this.cartesianToIsometric(x, y);
+      
+      const tile = this.add.sprite(isoPos.x, isoPos.y, 'tile').setOrigin(0.5, 0);
+      tile.setDepth(x + y);
+      this.gridGroup.add(tile);
+    });
 
     // Sort grid by Y to render back-to-front
     this.gridGroup.children.entries.sort((a, b) => a.y - b.y);
@@ -461,7 +460,7 @@ export class MainScene extends Phaser.Scene {
   isValidPlacement(x, y, w, h) {
     if (!this.gameState) return false;
     // Check bounds
-    if (x < 0 || y < 0 || x + w > this.gameState.gridWidth || y + h > this.gameState.gridHeight) return false;
+    if (x < 0 || y < 0) return false;
     
     // Check unlocked
     for (let bx = x; bx < x + w; bx++) {
@@ -482,7 +481,7 @@ export class MainScene extends Phaser.Scene {
 
   isValidExpansion(x, y) {
     if (!this.gameState) return false;
-    if (x < 0 || y < 0 || x >= this.gameState.gridWidth || y >= this.gameState.gridHeight) return false;
+    if (x < 0 || y < 0) return false;
     if (this.gameState.unlockedTiles.includes(`${x},${y}`)) return false;
     
     const isAdjacent = 
