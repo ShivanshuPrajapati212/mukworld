@@ -146,10 +146,6 @@ export class MainScene extends Phaser.Scene {
     this.hoverIndicator = this.add.sprite(0, 0, 'tile').setOrigin(0.5, 0).setAlpha(0.6).setDepth(100);
     this.hoverIndicator.setVisible(false);
 
-    // Initialize inputs silently to prevent update error
-    this.cursors = this.input.keyboard.createCursorKeys();
-    this.keys = this.input.keyboard.addKeys('W,A,S,D');
-
     this.checkAuthAndInit();
   }
 
@@ -494,16 +490,7 @@ export class MainScene extends Phaser.Scene {
   }
 
   update(time, delta) {
-    if (!this.cursors || !this.keys) return;
-    
-    const cam = this.cameras.main;
-    const speed = 500 * (delta / 1000); // 500 pixels per sec
-
-    if (this.cursors.left.isDown || this.keys.A.isDown) cam.scrollX -= speed / cam.zoom;
-    else if (this.cursors.right.isDown || this.keys.D.isDown) cam.scrollX += speed / cam.zoom;
-
-    if (this.cursors.up.isDown || this.keys.W.isDown) cam.scrollY -= speed / cam.zoom;
-    else if (this.cursors.down.isDown || this.keys.S.isDown) cam.scrollY += speed / cam.zoom;
+    // Camera movement is handled by mouse drag in setupInputs()
   }
 
   showError(msg) {
