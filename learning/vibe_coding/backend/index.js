@@ -21,9 +21,12 @@ app.use(express.json());
 
 // Building dictionary with sizes and costs
 const BUILDINGS = {
-  SERVER_T1: { cost: 100, width: 1, height: 1, computePerTick: 1 },
-  SERVER_T2: { cost: 500, width: 2, height: 1, computePerTick: 6 },
-  DESK: { cost: 50, width: 1, height: 1, computePerTick: 0 }
+  SERVER_T1: { cost: 100, width: 1, height: 1, computePerTick: 1, dataSoldPerTick: 0 },
+  SERVER_T2: { cost: 500, width: 2, height: 1, computePerTick: 6, dataSoldPerTick: 0 },
+  DESK: { cost: 50, width: 1, height: 1, computePerTick: 0, dataSoldPerTick: 0 },
+  SELLER_T1: { cost: 150, width: 1, height: 1, computePerTick: 0, dataSoldPerTick: 1 },
+  SELLER_T2: { cost: 750, width: 1, height: 1, computePerTick: 0, dataSoldPerTick: 5 },
+  SELLER_T3: { cost: 2000, width: 2, height: 1, computePerTick: 0, dataSoldPerTick: 15 }
 };
 
 // ---------------------------------------------------------
@@ -262,24 +265,6 @@ app.post('/api/train', authMiddleware, async (req, res) => {
   }
 });
 
-app.post('/api/sell', authMiddleware, async (req, res) => {
-  const state = await loadState(req.userId);
-  const amount = req.body.amount || state.data; 
-  
-  if (amount > 0 && state.data >= amount) {
-    state.data -= amount;
-    const conversionRate = 2; // 1 data = $2
-    state.money += amount * conversionRate; 
-    
-    // Explicitly force a save when selling, as it's a major event for the leaderboard
-    await state.save();
-
-    res.json({ success: true, message: 'Data sold', gameState: state });
-  } else {
-    res.status(400).json({ success: false, message: 'Not enough data to sell' });
-  }
-});
-
 // LEADERBOARD ROUTE
 app.get('/api/leaderboard', async (req, res) => {
   try {
@@ -329,9 +314,13 @@ function startGameLoop() {
 
       // Generate compute
       let computeGained = 0;
+      let dataSoldTotal = 0;
       state.grid.forEach(building => {
         const bDef = BUILDINGS[building.type];
-        if (bDef) computeGained += bDef.computePerTick;
+        if (bDef) {
+          computeGained += bDef.computePerTick;
+          dataSoldTotal += bDef.dataSoldPerTick;
+        }
       });
       state.compute += computeGained;
       
@@ -349,6 +338,14 @@ function startGameLoop() {
       // Generate data
       const dataGained = state.users * 0.5;
       state.data += dataGained;
+
+      // Auto-sell data via seller buildings
+      if (dataSoldTotal > 0) {
+        const actualSold = Math.min(state.data, dataSoldTotal);
+        const conversionRate = 2; // 1 data = $2
+        state.data -= actualSold;
+        state.money += actualSold * conversionRate;
+      }
     }
 
     // Save all active states every 5 ticks (5 seconds)

@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { fetchState, buildInfrastructure, expandRoom, setTrainingRate, sellData, login, register, fetchLeaderboard } from '../api/index.js';
+import { fetchState, buildInfrastructure, expandRoom, setTrainingRate, login, register, fetchLeaderboard } from '../api/index.js';
 
 const TILE_WIDTH = 64;
 const TILE_HEIGHT = 32;
@@ -47,6 +47,15 @@ export class MainScene extends Phaser.Scene {
 
     // Draw DESK shape (1x1, height 15, green)
     this.generateIsoBlockTexture('DESK', graphics, 1, 1, 15, 0x2ecc71);
+
+    // Draw SELLER_T1 shape (1x1, height 30, warm amber)
+    this.generateIsoBlockTexture('SELLER_T1', graphics, 1, 1, 30, 0xe67e22);
+
+    // Draw SELLER_T2 shape (1x1, height 35, deep orange)
+    this.generateIsoBlockTexture('SELLER_T2', graphics, 1, 1, 35, 0xd35400);
+
+    // Draw SELLER_T3 shape (2x1, height 40, rich red-orange)
+    this.generateIsoBlockTexture('SELLER_T3', graphics, 2, 1, 40, 0xc0392b);
   }
 
   generateIsoBlockTexture(key, graphics, w, h, z, baseColor) {
@@ -529,8 +538,13 @@ export class MainScene extends Phaser.Scene {
     const btnBuildS1 = document.getElementById('btn-build-server1');
     const btnBuildS2 = document.getElementById('btn-build-server2');
     const btnBuildDesk = document.getElementById('btn-build-desk');
+    const btnBuildSeller1 = document.getElementById('btn-build-seller1');
+    const btnBuildSeller2 = document.getElementById('btn-build-seller2');
+    const btnBuildSeller3 = document.getElementById('btn-build-seller3');
     const btnExpand = document.getElementById('btn-expand');
     
+    const allBtns = [btnCancel, btnBuildS1, btnBuildS2, btnBuildDesk, btnBuildSeller1, btnBuildSeller2, btnBuildSeller3, btnExpand];
+
     const setMode = (mode, buildType = null, w = 1, h = 1) => {
       this.mode = mode;
       this.buildType = buildType;
@@ -538,18 +552,20 @@ export class MainScene extends Phaser.Scene {
       this.buildHeight = h;
       this.hoverIndicator.setVisible(false);
 
-      [btnCancel, btnBuildS1, btnBuildS2, btnBuildDesk, btnExpand].forEach(b => b.classList.remove('active'));
+      allBtns.forEach(b => { if (b) b.classList.remove('active'); });
     };
 
     btnCancel.onclick = () => { setMode('idle'); btnCancel.classList.add('active'); };
     btnBuildS1.onclick = () => { setMode('build', 'SERVER_T1', 1, 1); btnBuildS1.classList.add('active'); };
     btnBuildS2.onclick = () => { setMode('build', 'SERVER_T2', 2, 1); btnBuildS2.classList.add('active'); };
     btnBuildDesk.onclick = () => { setMode('build', 'DESK', 1, 1); btnBuildDesk.classList.add('active'); };
+    if (btnBuildSeller1) btnBuildSeller1.onclick = () => { setMode('build', 'SELLER_T1', 1, 1); btnBuildSeller1.classList.add('active'); };
+    if (btnBuildSeller2) btnBuildSeller2.onclick = () => { setMode('build', 'SELLER_T2', 1, 1); btnBuildSeller2.classList.add('active'); };
+    if (btnBuildSeller3) btnBuildSeller3.onclick = () => { setMode('build', 'SELLER_T3', 2, 1); btnBuildSeller3.classList.add('active'); };
     btnExpand.onclick = () => { setMode('expand'); btnExpand.classList.add('active'); };
 
     const btnSetTrain = document.getElementById('btn-set-train');
     const trainInput = document.getElementById('train-rate-input');
-    const btnSellData = document.getElementById('btn-sell-data');
     const btnInfoClose = document.getElementById('btn-info-close');
     const btnInfoUpgrade = document.getElementById('btn-info-upgrade');
     const infoPanel = document.getElementById('info-panel');
@@ -591,22 +607,7 @@ export class MainScene extends Phaser.Scene {
       };
     }
 
-    if (btnSellData) {
-      btnSellData.onclick = async () => {
-        try {
-          const res = await sellData();
-          if (res.success) {
-            this.gameState = res.gameState;
-            this.updateHUD();
-            this.updateLeaderboardUI();
-          } else {
-            this.showError(res.message);
-          }
-        } catch(e) {
-          this.showError('Server Error');
-        }
-      };
-    }
+
 
     if (btnInfoClose) {
       btnInfoClose.onclick = () => {

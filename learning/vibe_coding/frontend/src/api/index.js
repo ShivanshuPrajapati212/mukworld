@@ -60,15 +60,6 @@ export async function setTrainingRate(rate) {
   return res.json();
 }
 
-export async function sellData() {
-  const res = await fetch(`${API_URL}/api/sell`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({})
-  });
-  return res.json();
-}
-
 export async function fetchLeaderboard() {
   const res = await fetch(`${API_URL}/api/leaderboard`, {
     headers: getAuthHeaders()
