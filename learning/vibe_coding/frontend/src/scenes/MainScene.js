@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { fetchState, buildInfrastructure, expandRoom, setTrainingRate, login, register, fetchLeaderboard } from '../api/index.js';
+import { fetchState, buildInfrastructure, expandRoom, login, register, fetchLeaderboard } from '../api/index.js';
 
 const TILE_WIDTH = 64;
 const TILE_HEIGHT = 32;
@@ -56,6 +56,15 @@ export class MainScene extends Phaser.Scene {
 
     // Draw SELLER_T3 shape (2x1, height 40, rich red-orange)
     this.generateIsoBlockTexture('SELLER_T3', graphics, 2, 1, 40, 0xc0392b);
+
+    // Draw TRAINER_T1 shape (1x1, height 30, teal)
+    this.generateIsoBlockTexture('TRAINER_T1', graphics, 1, 1, 30, 0x1abc9c);
+
+    // Draw TRAINER_T2 shape (1x1, height 35, darker teal)
+    this.generateIsoBlockTexture('TRAINER_T2', graphics, 1, 1, 35, 0x16a085);
+
+    // Draw TRAINER_T3 shape (2x1, height 40, deep cyan)
+    this.generateIsoBlockTexture('TRAINER_T3', graphics, 2, 1, 40, 0x0e6655);
   }
 
   generateIsoBlockTexture(key, graphics, w, h, z, baseColor) {
@@ -523,14 +532,12 @@ export class MainScene extends Phaser.Scene {
     const dataEl = document.getElementById('hud-data');
     const usersEl = document.getElementById('hud-users');
     const qualityEl = document.getElementById('hud-quality');
-    const tpsEl = document.getElementById('hud-tps');
 
     if (moneyEl) moneyEl.innerText = `Money: $${Math.floor(this.gameState.money)}`;
     if (computeEl) computeEl.innerText = `Compute: ${Math.floor(this.gameState.compute)}`;
     if (dataEl) dataEl.innerText = `Data: ${Math.floor(this.gameState.data)}`;
     if (usersEl) usersEl.innerText = `Users: ${Math.floor(this.gameState.users)}`;
     if (qualityEl) qualityEl.innerText = `Quality: ${this.gameState.models.quality.toFixed(2)}`;
-    if (tpsEl) tpsEl.innerText = this.gameState.models.tps;
   }
 
   setupUI() {
@@ -541,9 +548,12 @@ export class MainScene extends Phaser.Scene {
     const btnBuildSeller1 = document.getElementById('btn-build-seller1');
     const btnBuildSeller2 = document.getElementById('btn-build-seller2');
     const btnBuildSeller3 = document.getElementById('btn-build-seller3');
+    const btnBuildTrainer1 = document.getElementById('btn-build-trainer1');
+    const btnBuildTrainer2 = document.getElementById('btn-build-trainer2');
+    const btnBuildTrainer3 = document.getElementById('btn-build-trainer3');
     const btnExpand = document.getElementById('btn-expand');
     
-    const allBtns = [btnCancel, btnBuildS1, btnBuildS2, btnBuildDesk, btnBuildSeller1, btnBuildSeller2, btnBuildSeller3, btnExpand];
+    const allBtns = [btnCancel, btnBuildS1, btnBuildS2, btnBuildDesk, btnBuildSeller1, btnBuildSeller2, btnBuildSeller3, btnBuildTrainer1, btnBuildTrainer2, btnBuildTrainer3, btnExpand];
 
     const setMode = (mode, buildType = null, w = 1, h = 1) => {
       this.mode = mode;
@@ -562,10 +572,11 @@ export class MainScene extends Phaser.Scene {
     if (btnBuildSeller1) btnBuildSeller1.onclick = () => { setMode('build', 'SELLER_T1', 1, 1); btnBuildSeller1.classList.add('active'); };
     if (btnBuildSeller2) btnBuildSeller2.onclick = () => { setMode('build', 'SELLER_T2', 1, 1); btnBuildSeller2.classList.add('active'); };
     if (btnBuildSeller3) btnBuildSeller3.onclick = () => { setMode('build', 'SELLER_T3', 2, 1); btnBuildSeller3.classList.add('active'); };
+    if (btnBuildTrainer1) btnBuildTrainer1.onclick = () => { setMode('build', 'TRAINER_T1', 1, 1); btnBuildTrainer1.classList.add('active'); };
+    if (btnBuildTrainer2) btnBuildTrainer2.onclick = () => { setMode('build', 'TRAINER_T2', 1, 1); btnBuildTrainer2.classList.add('active'); };
+    if (btnBuildTrainer3) btnBuildTrainer3.onclick = () => { setMode('build', 'TRAINER_T3', 2, 1); btnBuildTrainer3.classList.add('active'); };
     btnExpand.onclick = () => { setMode('expand'); btnExpand.classList.add('active'); };
 
-    const btnSetTrain = document.getElementById('btn-set-train');
-    const trainInput = document.getElementById('train-rate-input');
     const btnInfoClose = document.getElementById('btn-info-close');
     const btnInfoUpgrade = document.getElementById('btn-info-upgrade');
     const infoPanel = document.getElementById('info-panel');
@@ -585,29 +596,6 @@ export class MainScene extends Phaser.Scene {
         fullLbModal.style.display = 'none';
       };
     }
-
-    if (btnSetTrain) {
-      btnSetTrain.onclick = async () => {
-        const rate = parseInt(trainInput.value, 10);
-        if (isNaN(rate) || rate < 0) {
-          this.showError('Invalid training rate');
-          return;
-        }
-        try {
-          const res = await setTrainingRate(rate);
-          if (res.success) {
-            this.gameState = res.gameState;
-            this.updateHUD();
-          } else {
-            this.showError(res.message);
-          }
-        } catch(e) {
-          this.showError('Server Error');
-        }
-      };
-    }
-
-
 
     if (btnInfoClose) {
       btnInfoClose.onclick = () => {

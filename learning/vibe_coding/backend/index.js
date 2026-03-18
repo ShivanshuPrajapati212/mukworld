@@ -21,12 +21,15 @@ app.use(express.json());
 
 // Building dictionary with sizes and costs
 const BUILDINGS = {
-  SERVER_T1: { cost: 100, width: 1, height: 1, computePerTick: 1, dataSoldPerTick: 0 },
-  SERVER_T2: { cost: 500, width: 2, height: 1, computePerTick: 6, dataSoldPerTick: 0 },
-  DESK: { cost: 50, width: 1, height: 1, computePerTick: 0, dataSoldPerTick: 0 },
-  SELLER_T1: { cost: 150, width: 1, height: 1, computePerTick: 0, dataSoldPerTick: 1 },
-  SELLER_T2: { cost: 750, width: 1, height: 1, computePerTick: 0, dataSoldPerTick: 5 },
-  SELLER_T3: { cost: 2000, width: 2, height: 1, computePerTick: 0, dataSoldPerTick: 15 }
+  SERVER_T1: { cost: 100, width: 1, height: 1, computePerTick: 1, dataSoldPerTick: 0, computeConsumedPerTick: 0 },
+  SERVER_T2: { cost: 500, width: 2, height: 1, computePerTick: 6, dataSoldPerTick: 0, computeConsumedPerTick: 0 },
+  DESK: { cost: 50, width: 1, height: 1, computePerTick: 0, dataSoldPerTick: 0, computeConsumedPerTick: 0 },
+  SELLER_T1: { cost: 150, width: 1, height: 1, computePerTick: 0, dataSoldPerTick: 1, computeConsumedPerTick: 0 },
+  SELLER_T2: { cost: 750, width: 1, height: 1, computePerTick: 0, dataSoldPerTick: 5, computeConsumedPerTick: 0 },
+  SELLER_T3: { cost: 2000, width: 2, height: 1, computePerTick: 0, dataSoldPerTick: 15, computeConsumedPerTick: 0 },
+  TRAINER_T1: { cost: 200, width: 1, height: 1, computePerTick: 0, dataSoldPerTick: 0, computeConsumedPerTick: 2 },
+  TRAINER_T2: { cost: 800, width: 1, height: 1, computePerTick: 0, dataSoldPerTick: 0, computeConsumedPerTick: 8 },
+  TRAINER_T3: { cost: 2500, width: 2, height: 1, computePerTick: 0, dataSoldPerTick: 0, computeConsumedPerTick: 20 }
 };
 
 // ---------------------------------------------------------
@@ -252,19 +255,6 @@ app.post('/api/expand', authMiddleware, async (req, res) => {
   }
 });
 
-app.post('/api/train', authMiddleware, async (req, res) => {
-  const { rate } = req.body;
-  const state = await loadState(req.userId);
-  
-  if (typeof rate === 'number' && rate >= 0) {
-    state.models.tps = rate;
-    state.markModified('models');
-    res.json({ success: true, message: `Training rate set to ${rate} compute/sec`, gameState: state });
-  } else {
-    res.status(400).json({ success: false, message: 'Invalid training rate' });
-  }
-});
-
 // LEADERBOARD ROUTE
 app.get('/api/leaderboard', async (req, res) => {
   try {
@@ -312,23 +302,26 @@ function startGameLoop() {
         continue; // skip logic for this tick
       }
 
-      // Generate compute
+      // Generate compute from servers
       let computeGained = 0;
       let dataSoldTotal = 0;
+      let computeConsumedTotal = 0;
       state.grid.forEach(building => {
         const bDef = BUILDINGS[building.type];
         if (bDef) {
           computeGained += bDef.computePerTick;
           dataSoldTotal += bDef.dataSoldPerTick;
+          computeConsumedTotal += bDef.computeConsumedPerTick;
         }
       });
       state.compute += computeGained;
       
-      // Train model
-      if (state.models.tps > 0) {
-        const actualTrainAmt = Math.min(state.compute, state.models.tps);
-        state.compute -= actualTrainAmt;
-        state.models.quality += (actualTrainAmt / 100);
+      // Auto-train model via trainer buildings (consume compute, gain quality)
+      if (computeConsumedTotal > 0) {
+        const actualTrain = Math.min(state.compute, computeConsumedTotal);
+        state.compute -= actualTrain;
+        // 100 compute = 1 quality point
+        state.models.quality += (actualTrain / 100);
       }
       
       // Growth of users organically

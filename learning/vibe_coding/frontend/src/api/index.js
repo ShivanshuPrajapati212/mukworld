@@ -51,15 +51,6 @@ export async function expandRoom(x, y) {
   return res.json();
 }
 
-export async function setTrainingRate(rate) {
-  const res = await fetch(`${API_URL}/api/train`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ rate })
-  });
-  return res.json();
-}
-
 export async function fetchLeaderboard() {
   const res = await fetch(`${API_URL}/api/leaderboard`, {
     headers: getAuthHeaders()
