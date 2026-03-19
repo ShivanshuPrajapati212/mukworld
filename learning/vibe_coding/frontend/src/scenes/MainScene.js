@@ -535,7 +535,6 @@ export class MainScene extends Phaser.Scene {
 
     if (moneyEl) moneyEl.innerText = `Money: $${Math.floor(this.gameState.money)}`;
     if (computeEl) computeEl.innerText = `Compute: ${Math.floor(this.gameState.compute)}`;
-    if (dataEl) dataEl.innerText = `Data: ${Math.floor(this.gameState.data)}`;
     if (usersEl) usersEl.innerText = `Users: ${Math.floor(this.gameState.users)}`;
     if (qualityEl) qualityEl.innerText = `Quality: ${this.gameState.models.quality.toFixed(2)}`;
   }

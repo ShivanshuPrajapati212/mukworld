@@ -21,15 +21,15 @@ app.use(express.json());
 
 // Building dictionary with sizes and costs
 const BUILDINGS = {
-  SERVER_T1: { cost: 100, width: 1, height: 1, computePerTick: 1, dataSoldPerTick: 0, computeConsumedPerTick: 0 },
-  SERVER_T2: { cost: 500, width: 2, height: 1, computePerTick: 6, dataSoldPerTick: 0, computeConsumedPerTick: 0 },
-  DESK: { cost: 50, width: 1, height: 1, computePerTick: 0, dataSoldPerTick: 0, computeConsumedPerTick: 0 },
-  SELLER_T1: { cost: 150, width: 1, height: 1, computePerTick: 0, dataSoldPerTick: 1, computeConsumedPerTick: 0 },
-  SELLER_T2: { cost: 750, width: 1, height: 1, computePerTick: 0, dataSoldPerTick: 5, computeConsumedPerTick: 0 },
-  SELLER_T3: { cost: 2000, width: 2, height: 1, computePerTick: 0, dataSoldPerTick: 15, computeConsumedPerTick: 0 },
-  TRAINER_T1: { cost: 200, width: 1, height: 1, computePerTick: 0, dataSoldPerTick: 0, computeConsumedPerTick: 2 },
-  TRAINER_T2: { cost: 800, width: 1, height: 1, computePerTick: 0, dataSoldPerTick: 0, computeConsumedPerTick: 8 },
-  TRAINER_T3: { cost: 2500, width: 2, height: 1, computePerTick: 0, dataSoldPerTick: 0, computeConsumedPerTick: 20 }
+  SERVER_T1: { cost: 100, width: 1, height: 1, computePerTick: 1, usersSoldPerTick: 0, computeConsumedPerTick: 0 },
+  SERVER_T2: { cost: 500, width: 2, height: 1, computePerTick: 6, usersSoldPerTick: 0, computeConsumedPerTick: 0 },
+  DESK: { cost: 50, width: 1, height: 1, computePerTick: 0, usersSoldPerTick: 0, computeConsumedPerTick: 0 },
+  SELLER_T1: { cost: 150, width: 1, height: 1, computePerTick: 0, usersSoldPerTick: 1, computeConsumedPerTick: 0 },
+  SELLER_T2: { cost: 750, width: 1, height: 1, computePerTick: 0, usersSoldPerTick: 5, computeConsumedPerTick: 0 },
+  SELLER_T3: { cost: 2000, width: 2, height: 1, computePerTick: 0, usersSoldPerTick: 15, computeConsumedPerTick: 0 },
+  TRAINER_T1: { cost: 200, width: 1, height: 1, computePerTick: 0, usersSoldPerTick: 0, computeConsumedPerTick: 2 },
+  TRAINER_T2: { cost: 800, width: 1, height: 1, computePerTick: 0, usersSoldPerTick: 0, computeConsumedPerTick: 8 },
+  TRAINER_T3: { cost: 2500, width: 2, height: 1, computePerTick: 0, usersSoldPerTick: 0, computeConsumedPerTick: 20 }
 };
 
 // ---------------------------------------------------------
@@ -45,7 +45,6 @@ const gameStateSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', unique: true },
   money: { type: Number, default: 500 },
   compute: { type: Number, default: 0 },
-  data: { type: Number, default: 0 },
   users: { type: Number, default: 0 },
   models: {
     quality: { type: Number, default: 1 },
@@ -304,13 +303,13 @@ function startGameLoop() {
 
       // Generate compute from servers
       let computeGained = 0;
-      let dataSoldTotal = 0;
+      let usersSoldTotal = 0;
       let computeConsumedTotal = 0;
       state.grid.forEach(building => {
         const bDef = BUILDINGS[building.type];
         if (bDef) {
           computeGained += bDef.computePerTick;
-          dataSoldTotal += bDef.dataSoldPerTick;
+          usersSoldTotal += (bDef.usersSoldPerTick || 0);
           computeConsumedTotal += bDef.computeConsumedPerTick;
         }
       });
@@ -328,15 +327,11 @@ function startGameLoop() {
       const userGrowth = Math.pow(state.models.quality, 1.5) * 0.1;
       state.users += userGrowth;
 
-      // Generate data
-      const dataGained = state.users * 0.5;
-      state.data += dataGained;
-
-      // Auto-sell data via seller buildings
-      if (dataSoldTotal > 0) {
-        const actualSold = Math.min(state.data, dataSoldTotal);
-        const conversionRate = 2; // 1 data = $2
-        state.data -= actualSold;
+      // Auto-generate money via seller buildings based on user base
+      // Users are the source of money but they are NOT consumed; they provide passive income
+      if (usersSoldTotal > 0) {
+        const actualSold = Math.min(state.users, usersSoldTotal);
+        const conversionRate = 2; // Each user (up to seller capacity) generates $2/sec
         state.money += actualSold * conversionRate;
       }
     }
