@@ -313,12 +313,15 @@ function startGameLoop() {
           computeConsumedTotal += bDef.computeConsumedPerTick;
         }
       });
-      state.compute += computeGained;
+      // Compute acts as an absolute level of computing power, not an accumulating resource
+      state.compute = computeGained;
       
-      // Auto-train model via trainer buildings (consume compute, gain quality)
+      // Auto-train model via trainer buildings using available compute level each tick
       if (computeConsumedTotal > 0) {
+        // You can't consume more compute power than you have
         const actualTrain = Math.min(state.compute, computeConsumedTotal);
-        state.compute -= actualTrain;
+        // We do NOT subtract from state.compute since it is a persistent level
+        
         // 100 compute = 1 quality point
         state.models.quality += (actualTrain / 100);
       }
