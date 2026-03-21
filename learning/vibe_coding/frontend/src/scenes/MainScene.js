@@ -156,6 +156,10 @@ export class MainScene extends Phaser.Scene {
     // Basic camera setup
     this.cameras.main.setBackgroundColor('#2d2d2d');
     this.cameras.main.setZoom(1);
+    
+    // Center camera on the middle of the default 10x10 starting patch
+    // center of grid is (4.5, 4.5) cartesian -> (0, 144) isometric
+    this.cameras.main.centerOn(0, 144);
 
     this.gridGroup = this.add.group();
     this.buildingGroup = this.add.group();
