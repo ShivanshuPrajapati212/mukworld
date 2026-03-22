@@ -321,9 +321,9 @@ function startGameLoop() {
         // You can't consume more compute power than you have
         const actualTrain = Math.min(state.compute, computeConsumedTotal);
         // We do NOT subtract from state.compute since it is a persistent level
-        
-        // 100 compute = 1 quality point
-        state.models.quality += (actualTrain / 100);
+        // Introduce diminishing returns: as Quality gets higher, it takes exponentially more compute to improve it
+        // e.g. at Quality 1 it takes 100 compute to gain 1 point. At Quality 10 it takes 10,000 compute.
+        state.models.quality += (actualTrain / (100 * Math.pow(state.models.quality, 2)));
       }
       
       // Growth of users organically
