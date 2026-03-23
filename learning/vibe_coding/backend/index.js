@@ -23,13 +23,16 @@ app.use(express.json());
 const BUILDINGS = {
   SERVER_T1: { cost: 100, width: 1, height: 1, computePerTick: 1, usersSoldPerTick: 0, computeConsumedPerTick: 0 },
   SERVER_T2: { cost: 500, width: 2, height: 1, computePerTick: 6, usersSoldPerTick: 0, computeConsumedPerTick: 0 },
+  SERVER_T2_ROTATED: { cost: 500, width: 1, height: 2, computePerTick: 6, usersSoldPerTick: 0, computeConsumedPerTick: 0 },
   DESK: { cost: 50, width: 1, height: 1, computePerTick: 0, usersSoldPerTick: 0, computeConsumedPerTick: 0 },
   SELLER_T1: { cost: 150, width: 1, height: 1, computePerTick: 0, usersSoldPerTick: 1, computeConsumedPerTick: 0 },
   SELLER_T2: { cost: 750, width: 1, height: 1, computePerTick: 0, usersSoldPerTick: 5, computeConsumedPerTick: 0 },
   SELLER_T3: { cost: 2000, width: 2, height: 1, computePerTick: 0, usersSoldPerTick: 15, computeConsumedPerTick: 0 },
+  SELLER_T3_ROTATED: { cost: 2000, width: 1, height: 2, computePerTick: 0, usersSoldPerTick: 15, computeConsumedPerTick: 0 },
   TRAINER_T1: { cost: 200, width: 1, height: 1, computePerTick: 0, usersSoldPerTick: 0, computeConsumedPerTick: 2 },
   TRAINER_T2: { cost: 800, width: 1, height: 1, computePerTick: 0, usersSoldPerTick: 0, computeConsumedPerTick: 8 },
-  TRAINER_T3: { cost: 2500, width: 2, height: 1, computePerTick: 0, usersSoldPerTick: 0, computeConsumedPerTick: 20 }
+  TRAINER_T3: { cost: 2500, width: 2, height: 1, computePerTick: 0, usersSoldPerTick: 0, computeConsumedPerTick: 20 },
+  TRAINER_T3_ROTATED: { cost: 2500, width: 1, height: 2, computePerTick: 0, usersSoldPerTick: 0, computeConsumedPerTick: 20 }
 };
 
 // ---------------------------------------------------------

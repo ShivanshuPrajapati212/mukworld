@@ -44,6 +44,7 @@ export class MainScene extends Phaser.Scene {
 
     // Draw SERVER_T2 shape (2x1, height 40, purple)
     this.generateIsoBlockTexture('SERVER_T2', graphics, 2, 1, 40, 0x9b59b6);
+    this.generateIsoBlockTexture('SERVER_T2_ROTATED', graphics, 1, 2, 40, 0x9b59b6);
 
     // Draw DESK shape (1x1, height 15, green)
     this.generateIsoBlockTexture('DESK', graphics, 1, 1, 15, 0x2ecc71);
@@ -56,6 +57,7 @@ export class MainScene extends Phaser.Scene {
 
     // Draw SELLER_T3 shape (2x1, height 40, rich red-orange)
     this.generateIsoBlockTexture('SELLER_T3', graphics, 2, 1, 40, 0xc0392b);
+    this.generateIsoBlockTexture('SELLER_T3_ROTATED', graphics, 1, 2, 40, 0xc0392b);
 
     // Draw TRAINER_T1 shape (1x1, height 30, teal)
     this.generateIsoBlockTexture('TRAINER_T1', graphics, 1, 1, 30, 0x1abc9c);
@@ -65,6 +67,7 @@ export class MainScene extends Phaser.Scene {
 
     // Draw TRAINER_T3 shape (2x1, height 40, deep cyan)
     this.generateIsoBlockTexture('TRAINER_T3', graphics, 2, 1, 40, 0x0e6655);
+    this.generateIsoBlockTexture('TRAINER_T3_ROTATED', graphics, 1, 2, 40, 0x0e6655);
   }
 
   generateIsoBlockTexture(key, graphics, w, h, z, baseColor) {
@@ -360,6 +363,27 @@ export class MainScene extends Phaser.Scene {
 
   setupInputs() {
     this.input.mouseGroup = this.add.group();
+    
+    // Rotation input ('R' key)
+    this.input.keyboard.on('keydown-R', () => {
+      if (this.mode === 'build' && this.buildWidth !== this.buildHeight) {
+        if (this.buildType.endsWith('_ROTATED')) {
+          this.buildType = this.buildType.replace('_ROTATED', '');
+        } else {
+          this.buildType = this.buildType + '_ROTATED';
+        }
+        
+        // Swap dimensions locally for placement checks
+        const temp = this.buildWidth;
+        this.buildWidth = this.buildHeight;
+        this.buildHeight = temp;
+        
+        // Update the hover indicator immediately so it doesn't wait for mouse to move
+        this.hoverIndicator.setTexture(this.buildType);
+        const origin = this.textureOrigins[this.buildType] || { originX: 0.5, originY: 1 };
+        this.hoverIndicator.setOrigin(origin.originX, origin.originY);
+      }
+    });
     
     // Zooming
     this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
