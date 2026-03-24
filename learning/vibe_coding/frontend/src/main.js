@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { MainScene } from './scenes/MainScene.js';
+import { WorldMapScene } from './scenes/WorldMapScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -7,7 +8,7 @@ const config = {
   height: window.innerHeight,
   parent: 'game-container',
   backgroundColor: '#2d2d2d',
-  scene: [MainScene],
+  scene: [MainScene, WorldMapScene],
   scale: {
     mode: Phaser.Scale.RESIZE, // Automatically resize with window
     autoCenter: Phaser.Scale.CENTER_BOTH
@@ -15,3 +16,4 @@ const config = {
 };
 
 const game = new Phaser.Game(config);
+

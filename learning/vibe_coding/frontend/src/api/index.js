@@ -57,3 +57,32 @@ export async function fetchLeaderboard() {
   });
   return res.json();
 }
+
+export async function fetchPlayerState(username) {
+  const res = await fetch(`${API_URL}/api/player/${encodeURIComponent(username)}`, {
+    headers: getAuthHeaders()
+  });
+  return res.json();
+}
+
+export async function fetchPlayers(page = 1, limit = 20) {
+  const res = await fetch(`${API_URL}/api/players?page=${page}&limit=${limit}`, {
+    headers: getAuthHeaders()
+  });
+  return res.json();
+}
+
+export async function searchPlayers(query) {
+  const res = await fetch(`${API_URL}/api/players/search?q=${encodeURIComponent(query)}`, {
+    headers: getAuthHeaders()
+  });
+  return res.json();
+}
+
+export async function fetchRandomPlayer() {
+  const res = await fetch(`${API_URL}/api/players/random`, {
+    headers: getAuthHeaders()
+  });
+  return res.json();
+}
+

@@ -50,7 +50,14 @@
 - [x] **Leaderboard API**: `GET /api/leaderboard` returns the top ranked players.
 - [x] **Leaderboard UI**: HTML overlay showing top players fetched from the server.
 
+## Phase 5.5: Player Base Visits & World Map
+- [x] **Backend API**: Endpoints to fetch a player's base state, list players (paginated), search players, and pick a random player.
+- [x] **Visit Mode**: `MainScene` read-only mode to view a visited player's layout and real-time stats (Money, Compute, Users, Quality) while hiding build buttons.
+- [x] **World Map Scene**: Isometric overworld showing miniature previews of other players' bases. Allows zooming, panning, and finding players to visit. Includes search panel and random "scout" button.
+- [x] **Testing**: Extensive tests added to Vite + Vitest covering both backend authentication & map visiting endpoints, and frontend mock responses.
+
 ## Phase 6: Polish
 - [ ] **Sprites**: Replace placeholder blocks with actual pixel art sprites.
 - [ ] **Persistence**: Ensure the backend database properly saves and loads player state.
 - [ ] **Balance Pass**: Adjust costs, generation rates, and timers on the server.
+

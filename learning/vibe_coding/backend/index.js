@@ -85,7 +85,7 @@ async function loadState(userIdStr) {
     session.lastActive = Date.now();
     return session.state;
   }
-  
+
   // Try to load from DB
   let state = await GameState.findOne({ userId: userIdStr });
   if (!state) {
@@ -105,7 +105,7 @@ async function loadState(userIdStr) {
 const authMiddleware = (req, res, next) => {
   const header = req.headers['authorization'];
   if (!header) return res.status(401).json({ success: false, message: 'No auth token provided' });
-  
+
   const token = header.split(' ')[1]; // "Bearer TOKEN"
   if (!token) return res.status(401).json({ success: false, message: 'Invalid auth token format' });
 
@@ -175,7 +175,7 @@ app.get('/api/state', authMiddleware, async (req, res) => {
 app.post('/api/build', authMiddleware, async (req, res) => {
   const { type, x, y } = req.body;
   const state = await loadState(req.userId);
-  
+
   const building = BUILDINGS[type];
   if (!building) {
     return res.status(400).json({ success: false, message: 'Invalid building type' });
@@ -197,7 +197,7 @@ app.post('/api/build', authMiddleware, async (req, res) => {
   // Collision detection
   const isColliding = state.grid.some(b => {
     return x < b.x + b.width && x + building.width > b.x &&
-           y < b.y + b.height && y + building.height > b.y;
+      y < b.y + b.height && y + building.height > b.y;
   });
 
   if (isColliding) {
@@ -241,10 +241,10 @@ app.post('/api/expand', authMiddleware, async (req, res) => {
 
       // Check adjacency for this tile
       if (!isAdjacent) {
-        if (unlockedSet.has(`${bx-1},${by}`) ||
-            unlockedSet.has(`${bx+1},${by}`) ||
-            unlockedSet.has(`${bx},${by-1}`) ||
-            unlockedSet.has(`${bx},${by+1}`)) {
+        if (unlockedSet.has(`${bx - 1},${by}`) ||
+          unlockedSet.has(`${bx + 1},${by}`) ||
+          unlockedSet.has(`${bx},${by - 1}`) ||
+          unlockedSet.has(`${bx},${by + 1}`)) {
           isAdjacent = true;
         }
       }
@@ -262,7 +262,7 @@ app.post('/api/expand', authMiddleware, async (req, res) => {
   // Calculate total progressive cost for the batch
   let totalCost = 0;
   let simulatedUnlockedCount = state.unlockedTiles.length;
-  
+
   for (let i = 0; i < tilesToUnlockKeyList.length; i++) {
     const expandedCount = Math.max(0, simulatedUnlockedCount - 100);
     totalCost += 50 + (expandedCount * 10);
@@ -272,13 +272,13 @@ app.post('/api/expand', authMiddleware, async (req, res) => {
   if (state.money >= totalCost) {
     state.money -= totalCost;
     state.unlockedTiles.push(...tilesToUnlockKeyList);
-    
+
     // Update bounds
     state.gridWidth = Math.max(state.gridWidth, x + size);
     state.gridHeight = Math.max(state.gridHeight, y + size);
-    
+
     state.markModified('unlockedTiles');
-    
+
     res.json({ success: true, message: `Unlocked ${tilesToUnlockKeyList.length} tile(s)`, gameState: state });
   } else {
     res.status(400).json({ success: false, message: `Not enough money. Need $${totalCost} for this batch.` });
@@ -311,6 +311,150 @@ app.get('/api/leaderboard', async (req, res) => {
 });
 
 // ---------------------------------------------------------
+// VISIT / PLAYER DISCOVERY ROUTES
+// ---------------------------------------------------------
+
+// GET /api/player/:username — Fetch a specific player's full state by username
+app.get('/api/player/:username', authMiddleware, async (req, res) => {
+  try {
+    const targetUser = await User.findOne({ username: req.params.username });
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: 'Player not found' });
+    }
+
+    // Load their state (this also puts them in activeSessions for real-time ticking)
+    const state = await loadState(targetUser._id.toString());
+    res.json({
+      success: true,
+      username: targetUser.username,
+      money: state.money,
+      compute: state.compute,
+      users: state.users,
+      models: state.models,
+      gridWidth: state.gridWidth,
+      gridHeight: state.gridHeight,
+      unlockedTiles: state.unlockedTiles,
+      grid: state.grid
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// GET /api/players — Paginated list of players for world map
+app.get('/api/players', authMiddleware, async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const totalCount = await GameState.countDocuments();
+    const states = await GameState.find()
+      .sort({ money: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('userId', 'username');
+
+    const players = states
+      .filter(doc => doc.userId) // filter out orphan states
+      .map(doc => ({
+        username: doc.userId.username,
+        money: doc.money,
+        users: doc.users,
+        modelQuality: doc.models.quality,
+        gridSummary: {
+          buildingCount: doc.grid.length,
+          tileCount: doc.unlockedTiles.length
+        }
+      }));
+
+    res.json({
+      success: true,
+      players,
+      page,
+      limit,
+      totalCount,
+      totalPages: Math.ceil(totalCount / limit)
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// GET /api/players/search?q=<query> — Search players by username
+app.get('/api/players/search', authMiddleware, async (req, res) => {
+  try {
+    const query = req.query.q || '';
+    if (!query.trim()) {
+      return res.status(400).json({ success: false, message: 'Search query is required' });
+    }
+
+    // Case-insensitive partial match
+    const matchedUsers = await User.find({
+      username: { $regex: query, $options: 'i' }
+    }).limit(20);
+
+    const userIds = matchedUsers.map(u => u._id);
+    const states = await GameState.find({ userId: { $in: userIds } })
+      .populate('userId', 'username');
+
+    const players = states
+      .filter(doc => doc.userId)
+      .map(doc => ({
+        username: doc.userId.username,
+        money: doc.money,
+        users: doc.users,
+        modelQuality: doc.models.quality,
+        gridSummary: {
+          buildingCount: doc.grid.length,
+          tileCount: doc.unlockedTiles.length
+        }
+      }));
+
+    res.json({ success: true, players });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// GET /api/players/random — Get a random player
+app.get('/api/players/random', authMiddleware, async (req, res) => {
+  try {
+    const count = await GameState.countDocuments();
+    if (count === 0) {
+      return res.status(404).json({ success: false, message: 'No players found' });
+    }
+
+    const randomIndex = Math.floor(Math.random() * count);
+    const randomState = await GameState.findOne()
+      .skip(randomIndex)
+      .populate('userId', 'username');
+
+    if (!randomState || !randomState.userId) {
+      return res.status(404).json({ success: false, message: 'No players found' });
+    }
+
+    res.json({
+      success: true,
+      username: randomState.userId.username,
+      money: randomState.money,
+      users: randomState.users,
+      modelQuality: randomState.models.quality,
+      gridSummary: {
+        buildingCount: randomState.grid.length,
+        tileCount: randomState.unlockedTiles.length
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ---------------------------------------------------------
 // SERVER-SIDE TICK & PERSISTENCE
 // ---------------------------------------------------------
 let tickInterval;
@@ -324,7 +468,7 @@ function startGameLoop() {
 
     for (const [userIdStr, session] of activeSessions.entries()) {
       const state = session.state;
-      
+
       // Stop ticking if they haven't been active for 5 minutes
       if (now - session.lastActive > 5 * 60 * 1000) {
         await state.save();
@@ -346,7 +490,7 @@ function startGameLoop() {
       });
       // Compute acts as an absolute level of computing power, not an accumulating resource
       state.compute = computeGained;
-      
+
       // Auto-train model via trainer buildings using available compute level each tick
       if (computeConsumedTotal > 0) {
         // You can't consume more compute power than you have
@@ -356,7 +500,7 @@ function startGameLoop() {
         // e.g. at Quality 1 it takes 100 compute to gain 1 point. At Quality 10 it takes 10,000 compute.
         state.models.quality += (actualTrain / (100 * Math.pow(state.models.quality, 2)));
       }
-      
+
       // Growth of users organically
       const userGrowth = Math.pow(state.models.quality, 1.5) * 0.1;
       state.users += userGrowth;
@@ -388,7 +532,7 @@ function stopGameLoop() {
 // Ensure backwards compatibility with old tests if they use memory export by default
 let gameState = {}; // Placeholder if tests check it directly
 
-export { app, gameState, startGameLoop, stopGameLoop, BUILDINGS };
+export { app, gameState, startGameLoop, stopGameLoop, BUILDINGS, activeSessions };
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {

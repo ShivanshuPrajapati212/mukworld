@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { fetchState, buildInfrastructure, expandRoom, login, register, fetchLeaderboard } from '../api/index.js';
+import { fetchState, buildInfrastructure, expandRoom, login, register, fetchLeaderboard, fetchPlayerState, searchPlayers, fetchRandomPlayer } from '../api/index.js';
 
 const TILE_WIDTH = 64;
 const TILE_HEIGHT = 32;
@@ -12,6 +12,11 @@ export class MainScene extends Phaser.Scene {
     this.buildType = null;
     this.buildWidth = 1;
     this.buildHeight = 1;
+
+    // Visit mode state
+    this.isVisiting = false;
+    this.visitingUsername = null;
+    this.ownGameState = null; // Stored while visiting
   }
 
   preload() {
@@ -160,7 +165,14 @@ export class MainScene extends Phaser.Scene {
     graphics.strokePath();
   }
 
-  async create() {
+  async create(data) {
+    // Reset visit state when scene restarts
+    this.isVisiting = false;
+    this.visitingUsername = null;
+    this.ownGameState = null;
+    this.mode = 'idle';
+    this.buildType = null;
+
     // Basic camera setup
     this.cameras.main.setBackgroundColor('#2d2d2d');
     this.cameras.main.setZoom(1);
@@ -175,6 +187,9 @@ export class MainScene extends Phaser.Scene {
     // Create a hover indicator
     this.hoverIndicator = this.add.sprite(0, 0, 'tile').setOrigin(0.5, 0).setAlpha(0.6).setDepth(100);
     this.hoverIndicator.setVisible(false);
+
+    // Store data for post-init visit
+    this._pendingVisitUsername = data && data.visitUsername ? data.visitUsername : null;
 
     this.checkAuthAndInit();
   }
@@ -218,14 +233,22 @@ export class MainScene extends Phaser.Scene {
       delay: 2000,
       callback: async () => {
         try {
-          const res = await fetchState();
+          let res;
+          if (this.isVisiting && this.visitingUsername) {
+            // Poll the visited player's state in real-time
+            res = await fetchPlayerState(this.visitingUsername);
+          } else {
+            res = await fetchState();
+          }
           if (res.success === false) return; // Silent fail on invalid auth mid-game
           
           this.gameState = res;
           this.updateHUD();
           // Ideally we'd only redraw what changed, but for now redraw world
           this.drawWorld();
-          this.updateLeaderboardUI();
+          if (!this.isVisiting) {
+            this.updateLeaderboardUI();
+          }
         } catch (e) {
           // silent fail on poll if server goes down
         }
@@ -235,6 +258,13 @@ export class MainScene extends Phaser.Scene {
 
     // Initial leaderboard load
     this.updateLeaderboardUI();
+
+    // If we were sent here with a visit request (from WorldMapScene)
+    if (this._pendingVisitUsername) {
+      const visitTarget = this._pendingVisitUsername;
+      this._pendingVisitUsername = null;
+      this.enterVisitMode(visitTarget);
+    }
   }
 
   setupAuthUI() {
@@ -302,13 +332,25 @@ export class MainScene extends Phaser.Scene {
         const fullContent = document.getElementById('lb-full-content');
         let fullHTML = '';
         lb.forEach(row => {
+          const isMe = row.username === myUsername;
           fullHTML += `<div class="lb-full-row">
             <span style="width:10%">${row.rank}</span>
-            <span style="flex:1; color:${row.username===myUsername?'#4CAF50':'inherit'}">${row.username}</span>
-            <span style="width:30%; text-align:right">$${Math.floor(row.money)}</span>
+            <span style="flex:1; color:${isMe?'#4CAF50':'inherit'}">${row.username}</span>
+            <span style="width:20%; text-align:right">$${Math.floor(row.money)}</span>
+            <span style="width:20%; text-align:right">${isMe ? '' : `<button class="lb-visit-btn" data-username="${row.username}" style="padding:2px 8px;font-size:11px;background:#2196F3;border:none;color:white;border-radius:3px;cursor:pointer;">Visit</button>`}</span>
           </div>`;
         });
         fullContent.innerHTML = fullHTML;
+
+        // Attach visit button handlers
+        fullContent.querySelectorAll('.lb-visit-btn').forEach(btn => {
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            const username = btn.getAttribute('data-username');
+            document.getElementById('leaderboard-full-modal').style.display = 'none';
+            this.enterVisitMode(username);
+          };
+        });
       }
       
     } catch (e) {
@@ -565,6 +607,88 @@ export class MainScene extends Phaser.Scene {
     // Camera movement is handled by mouse drag in setupInputs()
   }
 
+  // ----------------------------------------------------------
+  // VISIT MODE
+  // ----------------------------------------------------------
+
+  async enterVisitMode(username) {
+    if (this.isVisiting && this.visitingUsername === username) return;
+
+    try {
+      const res = await fetchPlayerState(username);
+      if (!res.success) {
+        this.showError(res.message || 'Could not load player');
+        return;
+      }
+
+      // Store own state if not already visiting
+      if (!this.isVisiting) {
+        this.ownGameState = this.gameState;
+      }
+
+      this.isVisiting = true;
+      this.visitingUsername = username;
+      this.gameState = res;
+
+      // Force idle mode, disable building
+      this.mode = 'idle';
+      this.buildType = null;
+      this.hoverIndicator.setVisible(false);
+
+      // Update UI visibility
+      this.toggleVisitUI(true);
+
+      // Redraw with visited player's world
+      this.drawWorld();
+
+      // Center camera on their base
+      this.cameras.main.centerOn(0, 144);
+    } catch (e) {
+      this.showError('Failed to connect to server');
+    }
+  }
+
+  exitVisitMode() {
+    if (!this.isVisiting) return;
+
+    this.isVisiting = false;
+    this.visitingUsername = null;
+
+    // Restore own state
+    if (this.ownGameState) {
+      this.gameState = this.ownGameState;
+      this.ownGameState = null;
+    }
+
+    // Restore UI
+    this.toggleVisitUI(false);
+
+    // Redraw own world
+    this.drawWorld();
+    this.cameras.main.centerOn(0, 144);
+  }
+
+  toggleVisitUI(visiting) {
+    const buildControls = document.getElementById('build-controls');
+    const visitBanner = document.getElementById('visit-banner');
+    const visitUsername = document.getElementById('visit-username');
+    const btnGoHome = document.getElementById('btn-go-home');
+    const btnWorldMap = document.getElementById('btn-world-map');
+    const btnSearchVisit = document.getElementById('btn-search-visit');
+    const btnScout = document.getElementById('btn-scout');
+    const searchPanel = document.getElementById('search-panel');
+
+    if (visiting) {
+      if (buildControls) buildControls.style.display = 'none';
+      if (visitBanner) visitBanner.style.display = 'flex';
+      if (visitUsername) visitUsername.innerText = this.visitingUsername;
+      if (searchPanel) searchPanel.style.display = 'none';
+    } else {
+      if (buildControls) buildControls.style.display = 'flex';
+      if (visitBanner) visitBanner.style.display = 'none';
+    }
+  }
+
   showError(msg) {
     const popup = document.getElementById('error-popup');
     if (!popup) return;
@@ -587,10 +711,11 @@ export class MainScene extends Phaser.Scene {
     const usersEl = document.getElementById('hud-users');
     const qualityEl = document.getElementById('hud-quality');
 
-    if (moneyEl) moneyEl.innerText = `Money: $${Math.floor(this.gameState.money)}`;
-    if (computeEl) computeEl.innerText = `Compute: ${Math.floor(this.gameState.compute)}`;
-    if (usersEl) usersEl.innerText = `Users: ${Math.floor(this.gameState.users)}`;
-    if (qualityEl) qualityEl.innerText = `Quality: ${this.gameState.models.quality.toFixed(2)}`;
+    const prefix = this.isVisiting ? `[${this.visitingUsername}] ` : '';
+    if (moneyEl) moneyEl.innerText = `${prefix}Money: $${Math.floor(this.gameState.money)}`;
+    if (computeEl) computeEl.innerText = `${prefix}Compute: ${Math.floor(this.gameState.compute)}`;
+    if (usersEl) usersEl.innerText = `${prefix}Users: ${Math.floor(this.gameState.users)}`;
+    if (qualityEl) qualityEl.innerText = `${prefix}Quality: ${this.gameState.models.quality.toFixed(2)}`;
   }
 
   setupUI() {
@@ -611,6 +736,9 @@ export class MainScene extends Phaser.Scene {
     const allBtns = [btnCancel, btnBuildS1, btnBuildS2, btnBuildDesk, btnBuildSeller1, btnBuildSeller2, btnBuildSeller3, btnBuildTrainer1, btnBuildTrainer2, btnBuildTrainer3, btnExpand1, btnExpand3, btnExpand9];
 
     const setMode = (mode, buildType = null, w = 1, h = 1) => {
+      // Block build/expand while visiting
+      if (this.isVisiting && mode !== 'idle') return;
+
       this.mode = mode;
       this.buildType = buildType;
       this.buildWidth = w;
@@ -663,6 +791,77 @@ export class MainScene extends Phaser.Scene {
     if (btnInfoUpgrade) {
       btnInfoUpgrade.onclick = () => {
         this.showError('Upgrade action not implemented in backend yet.');
+      };
+    }
+
+    // --- Visit Controls ---
+    const btnGoHome = document.getElementById('btn-go-home');
+    if (btnGoHome) {
+      btnGoHome.onclick = () => this.exitVisitMode();
+    }
+
+    const btnWorldMap = document.getElementById('btn-world-map');
+    if (btnWorldMap) {
+      btnWorldMap.onclick = () => {
+        // Exit visit mode if active
+        if (this.isVisiting) this.exitVisitMode();
+        this.scene.start('WorldMapScene');
+      };
+    }
+
+    const btnSearchVisit = document.getElementById('btn-search-visit');
+    const searchPanel = document.getElementById('search-panel');
+    if (btnSearchVisit && searchPanel) {
+      btnSearchVisit.onclick = () => {
+        searchPanel.style.display = searchPanel.style.display === 'block' ? 'none' : 'block';
+      };
+    }
+
+    const searchInput = document.getElementById('search-input');
+    const searchBtn = document.getElementById('search-btn');
+    const searchResults = document.getElementById('search-results');
+    if (searchBtn && searchInput && searchResults) {
+      searchBtn.onclick = async () => {
+        const query = searchInput.value.trim();
+        if (!query) return;
+        try {
+          const res = await searchPlayers(query);
+          if (!res.success) { searchResults.innerHTML = '<div style="color:red">Error</div>'; return; }
+          if (res.players.length === 0) { searchResults.innerHTML = '<div>No players found</div>'; return; }
+          const myUsername = localStorage.getItem('username');
+          searchResults.innerHTML = res.players.map(p => 
+            `<div class="search-result-row" style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #444;">
+              <span>${p.username} — $${Math.floor(p.money)}</span>
+              ${p.username !== myUsername ? `<button class="search-visit-btn" data-username="${p.username}" style="padding:2px 8px;font-size:11px;background:#2196F3;border:none;color:white;border-radius:3px;cursor:pointer;">Visit</button>` : '<span style="color:#4CAF50;font-size:11px;">You</span>'}
+            </div>`
+          ).join('');
+          searchResults.querySelectorAll('.search-visit-btn').forEach(btn => {
+            btn.onclick = () => {
+              searchPanel.style.display = 'none';
+              this.enterVisitMode(btn.getAttribute('data-username'));
+            };
+          });
+        } catch (e) {
+          searchResults.innerHTML = '<div style="color:red">Server error</div>';
+        }
+      };
+      // Enter key to search
+      searchInput.onkeydown = (e) => { if (e.key === 'Enter') searchBtn.click(); };
+    }
+
+    const btnScout = document.getElementById('btn-scout');
+    if (btnScout) {
+      btnScout.onclick = async () => {
+        try {
+          const res = await fetchRandomPlayer();
+          if (res.success) {
+            this.enterVisitMode(res.username);
+          } else {
+            this.showError('No players to scout');
+          }
+        } catch (e) {
+          this.showError('Scout failed');
+        }
       };
     }
   }
