@@ -216,44 +216,72 @@ app.post('/api/build', authMiddleware, async (req, res) => {
 });
 
 app.post('/api/expand', authMiddleware, async (req, res) => {
-  const { x, y } = req.body;
+  const { x, y, size = 1 } = req.body;
   const state = await loadState(req.userId);
 
   if (x < 0 || y < 0) {
     return res.status(400).json({ success: false, message: 'Tile out of bounds (must be >= 0)' });
   }
 
-  const tileKey = `${x},${y}`;
-  if (state.unlockedTiles.includes(tileKey)) {
-    return res.status(400).json({ success: false, message: 'Tile already unlocked' });
+  // Find all tiles in the N x N block that need to be unlocked
+  const tilesToUnlockKeyList = [];
+  let isAdjacent = false;
+
+  const unlockedSet = new Set(state.unlockedTiles);
+
+  for (let bx = x; bx < x + size; bx++) {
+    for (let by = y; by < y + size; by++) {
+      const tileKey = `${bx},${by}`;
+      if (!unlockedSet.has(tileKey)) {
+        tilesToUnlockKeyList.push(tileKey);
+      } else {
+        // If it overlaps with an unlocked tile, it's connected implicitly!
+        isAdjacent = true;
+      }
+
+      // Check adjacency for this tile
+      if (!isAdjacent) {
+        if (unlockedSet.has(`${bx-1},${by}`) ||
+            unlockedSet.has(`${bx+1},${by}`) ||
+            unlockedSet.has(`${bx},${by-1}`) ||
+            unlockedSet.has(`${bx},${by+1}`)) {
+          isAdjacent = true;
+        }
+      }
+    }
   }
 
-  // Check if adjacent to an already unlocked tile
-  const isAdjacent = 
-    state.unlockedTiles.includes(`${x-1},${y}`) ||
-    state.unlockedTiles.includes(`${x+1},${y}`) ||
-    state.unlockedTiles.includes(`${x},${y-1}`) ||
-    state.unlockedTiles.includes(`${x},${y+1}`);
+  if (tilesToUnlockKeyList.length === 0) {
+    return res.status(400).json({ success: false, message: 'All given tiles are already unlocked' });
+  }
 
   if (!isAdjacent) {
     return res.status(400).json({ success: false, message: 'Must expand adjacent to an unlocked tile' });
   }
 
-  // Base 10x10 = 100 tiles.
-  const expandedCount = Math.max(0, state.unlockedTiles.length - 100);
-  const cost = 50 + (expandedCount * 10);
+  // Calculate total progressive cost for the batch
+  let totalCost = 0;
+  let simulatedUnlockedCount = state.unlockedTiles.length;
+  
+  for (let i = 0; i < tilesToUnlockKeyList.length; i++) {
+    const expandedCount = Math.max(0, simulatedUnlockedCount - 100);
+    totalCost += 50 + (expandedCount * 10);
+    simulatedUnlockedCount++;
+  }
 
-  if (state.money >= cost) {
-    state.money -= cost;
-    state.unlockedTiles.push(tileKey);
-    // Expand theoretical size to render if they build super far out (Frontend bound calculation fix)
-    state.gridWidth = Math.max(state.gridWidth, x + 1);
-    state.gridHeight = Math.max(state.gridHeight, y + 1);
+  if (state.money >= totalCost) {
+    state.money -= totalCost;
+    state.unlockedTiles.push(...tilesToUnlockKeyList);
+    
+    // Update bounds
+    state.gridWidth = Math.max(state.gridWidth, x + size);
+    state.gridHeight = Math.max(state.gridHeight, y + size);
+    
     state.markModified('unlockedTiles');
     
-    res.json({ success: true, message: 'Tile unlocked', gameState: state });
+    res.json({ success: true, message: `Unlocked ${tilesToUnlockKeyList.length} tile(s)`, gameState: state });
   } else {
-    res.status(400).json({ success: false, message: 'Not enough money to expand' });
+    res.status(400).json({ success: false, message: `Not enough money. Need $${totalCost} for this batch.` });
   }
 });
 

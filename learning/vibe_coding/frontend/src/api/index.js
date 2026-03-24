@@ -42,11 +42,11 @@ export async function buildInfrastructure(type, x, y) {
   return res.json();
 }
 
-export async function expandRoom(x, y) {
+export async function expandRoom(x, y, size = 1) {
   const res = await fetch(`${API_URL}/api/expand`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ x, y })
+    body: JSON.stringify({ x, y, size })
   });
   return res.json();
 }

@@ -68,6 +68,11 @@ export class MainScene extends Phaser.Scene {
     // Draw TRAINER_T3 shape (2x1, height 40, deep cyan)
     this.generateIsoBlockTexture('TRAINER_T3', graphics, 2, 1, 40, 0x0e6655);
     this.generateIsoBlockTexture('TRAINER_T3_ROTATED', graphics, 1, 2, 40, 0x0e6655);
+
+    // Generate EXPAND block footprint textures (height 0, flat yellow)
+    this.generateIsoBlockTexture('EXPAND_1', graphics, 1, 1, 0, 0xf1c40f);
+    this.generateIsoBlockTexture('EXPAND_3', graphics, 3, 3, 0, 0xf1c40f);
+    this.generateIsoBlockTexture('EXPAND_9', graphics, 9, 9, 0, 0xf1c40f);
   }
 
   generateIsoBlockTexture(key, graphics, w, h, z, baseColor) {
@@ -426,12 +431,14 @@ export class MainScene extends Phaser.Scene {
         let isValid = this.isValidPlacement(cartPos.x, cartPos.y, this.buildWidth, this.buildHeight);
         this.hoverIndicator.setTint(isValid ? 0x00ff00 : 0xff0000);
       } else if (this.mode === 'expand') {
-        this.hoverIndicator.setTexture('tile');
-        this.hoverIndicator.setOrigin(0.5, 0);
+        const expandKey = `EXPAND_${this.buildWidth}`;
+        this.hoverIndicator.setTexture(expandKey);
+        const origin = this.textureOrigins[expandKey] || { originX: 0.5, originY: 1 };
+        this.hoverIndicator.setOrigin(origin.originX, origin.originY);
         this.hoverIndicator.setScale(1);
         this.hoverIndicator.setDepth(1000);
         
-        let isValid = this.isValidExpansion(cartPos.x, cartPos.y);
+        let isValid = this.isValidExpansion(cartPos.x, cartPos.y, this.buildWidth);
         this.hoverIndicator.setTint(isValid ? 0x00ff00 : 0xff0000);
       }
     });
@@ -479,13 +486,13 @@ export class MainScene extends Phaser.Scene {
           this.showError('Server Error');
         }
       } else if (this.mode === 'expand') {
-        if (!this.isValidExpansion(cartPos.x, cartPos.y)) {
+        if (!this.isValidExpansion(cartPos.x, cartPos.y, this.buildWidth)) {
           this.showError('Invalid expansion or insufficient funds');
           return;
         }
 
         try {
-          const res = await expandRoom(cartPos.x, cartPos.y);
+          const res = await expandRoom(cartPos.x, cartPos.y, this.buildWidth);
           if (res.success) {
             this.gameState = res.gameState;
             this.drawWorld();
@@ -521,17 +528,36 @@ export class MainScene extends Phaser.Scene {
     return true;
   }
 
-  isValidExpansion(x, y) {
+  isValidExpansion(x, y, size) {
     if (!this.gameState) return false;
     if (x < 0 || y < 0) return false;
-    if (this.gameState.unlockedTiles.includes(`${x},${y}`)) return false;
     
-    const isAdjacent = 
-      this.gameState.unlockedTiles.includes(`${x-1},${y}`) ||
-      this.gameState.unlockedTiles.includes(`${x+1},${y}`) ||
-      this.gameState.unlockedTiles.includes(`${x},${y-1}`) ||
-      this.gameState.unlockedTiles.includes(`${x},${y+1}`);
-      
+    let isAdjacent = false;
+    const unlockedSet = new Set(this.gameState.unlockedTiles);
+
+    let allAlreadyUnlocked = true;
+
+    for (let bx = x; bx < x + size; bx++) {
+      for (let by = y; by < y + size; by++) {
+        const key = `${bx},${by}`;
+        if (!unlockedSet.has(key)) {
+          allAlreadyUnlocked = false;
+          // check adjacency of this newly added tile to existing unlocked network
+          if (!isAdjacent) {
+            if (unlockedSet.has(`${bx-1},${by}`) ||
+                unlockedSet.has(`${bx+1},${by}`) ||
+                unlockedSet.has(`${bx},${by-1}`) ||
+                unlockedSet.has(`${bx},${by+1}`)) {
+              isAdjacent = true;
+            }
+          }
+        } else {
+          isAdjacent = true; // overlaps with an unlocked tile so physically connected
+        }
+      }
+    }
+
+    if (allAlreadyUnlocked) return false;
     return isAdjacent;
   }
 
@@ -578,9 +604,11 @@ export class MainScene extends Phaser.Scene {
     const btnBuildTrainer1 = document.getElementById('btn-build-trainer1');
     const btnBuildTrainer2 = document.getElementById('btn-build-trainer2');
     const btnBuildTrainer3 = document.getElementById('btn-build-trainer3');
-    const btnExpand = document.getElementById('btn-expand');
+    const btnExpand1 = document.getElementById('btn-expand-1');
+    const btnExpand3 = document.getElementById('btn-expand-3');
+    const btnExpand9 = document.getElementById('btn-expand-9');
     
-    const allBtns = [btnCancel, btnBuildS1, btnBuildS2, btnBuildDesk, btnBuildSeller1, btnBuildSeller2, btnBuildSeller3, btnBuildTrainer1, btnBuildTrainer2, btnBuildTrainer3, btnExpand];
+    const allBtns = [btnCancel, btnBuildS1, btnBuildS2, btnBuildDesk, btnBuildSeller1, btnBuildSeller2, btnBuildSeller3, btnBuildTrainer1, btnBuildTrainer2, btnBuildTrainer3, btnExpand1, btnExpand3, btnExpand9];
 
     const setMode = (mode, buildType = null, w = 1, h = 1) => {
       this.mode = mode;
@@ -602,7 +630,9 @@ export class MainScene extends Phaser.Scene {
     if (btnBuildTrainer1) btnBuildTrainer1.onclick = () => { setMode('build', 'TRAINER_T1', 1, 1); btnBuildTrainer1.classList.add('active'); };
     if (btnBuildTrainer2) btnBuildTrainer2.onclick = () => { setMode('build', 'TRAINER_T2', 1, 1); btnBuildTrainer2.classList.add('active'); };
     if (btnBuildTrainer3) btnBuildTrainer3.onclick = () => { setMode('build', 'TRAINER_T3', 2, 1); btnBuildTrainer3.classList.add('active'); };
-    btnExpand.onclick = () => { setMode('expand'); btnExpand.classList.add('active'); };
+    if (btnExpand1) btnExpand1.onclick = () => { setMode('expand', null, 1, 1); btnExpand1.classList.add('active'); };
+    if (btnExpand3) btnExpand3.onclick = () => { setMode('expand', null, 3, 3); btnExpand3.classList.add('active'); };
+    if (btnExpand9) btnExpand9.onclick = () => { setMode('expand', null, 9, 9); btnExpand9.classList.add('active'); };
 
     const btnInfoClose = document.getElementById('btn-info-close');
     const btnInfoUpgrade = document.getElementById('btn-info-upgrade');
