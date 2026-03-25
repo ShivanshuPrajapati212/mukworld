@@ -215,6 +215,64 @@ app.post('/api/build', authMiddleware, async (req, res) => {
   }
 });
 
+app.post('/api/move', authMiddleware, async (req, res) => {
+  const { fromX, fromY, toX, toY, newType } = req.body;
+  const state = await loadState(req.userId);
+
+  // Find the building to move
+  const buildingIndex = state.grid.findIndex(b => b.x === fromX && b.y === fromY);
+  if (buildingIndex === -1) {
+    return res.status(400).json({ success: false, message: 'Building not found' });
+  }
+
+  const existingBuilding = state.grid[buildingIndex];
+  
+  // They are only allowed to move to the exact same base building type (e.g., SERVER_T2 to SERVER_T2_ROTATED)
+  // We extract the base generic type name by stripping "_ROTATED"
+  const getBaseType = (t) => t.replace('_ROTATED', '');
+  if (getBaseType(existingBuilding.type) !== getBaseType(newType)) {
+    return res.status(400).json({ success: false, message: 'Cannot transform into a different building type' });
+  }
+
+  const newBuildingDef = BUILDINGS[newType];
+  if (!newBuildingDef) {
+    return res.status(400).json({ success: false, message: 'Invalid target building type' });
+  }
+
+  // Basically the same checks as build, but excluding the currently moving building
+  for (let bx = toX; bx < toX + newBuildingDef.width; bx++) {
+    for (let by = toY; by < toY + newBuildingDef.height; by++) {
+      if (bx < 0 || by < 0) {
+        return res.status(400).json({ success: false, message: 'Building out of bounds (must be >= 0)' });
+      }
+      if (!state.unlockedTiles.includes(`${bx},${by}`)) {
+        return res.status(400).json({ success: false, message: 'Tile is not unlocked' });
+      }
+    }
+  }
+
+  // Collision detection, excluding the moved building
+  const isColliding = state.grid.some((b, i) => {
+    if (i === buildingIndex) return false; // skip self
+    return toX < b.x + b.width && toX + newBuildingDef.width > b.x &&
+      toY < b.y + b.height && toY + newBuildingDef.height > b.y;
+  });
+
+  if (isColliding) {
+    return res.status(400).json({ success: false, message: 'Building collides with another building' });
+  }
+
+  // Valid move, update coordinates and type
+  state.grid[buildingIndex].x = toX;
+  state.grid[buildingIndex].y = toY;
+  state.grid[buildingIndex].type = newType;
+  state.grid[buildingIndex].width = newBuildingDef.width;
+  state.grid[buildingIndex].height = newBuildingDef.height;
+  
+  state.markModified('grid');
+  res.json({ success: true, message: 'Building moved', gameState: state });
+});
+
 app.post('/api/expand', authMiddleware, async (req, res) => {
   const { x, y, size = 1 } = req.body;
   const state = await loadState(req.userId);

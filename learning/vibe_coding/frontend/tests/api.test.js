@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetchState, buildInfrastructure, expandRoom, fetchPlayerState, fetchPlayers, searchPlayers, fetchRandomPlayer } from '../src/api/index.js';
+import { fetchState, buildInfrastructure, moveInfrastructure, expandRoom, fetchPlayerState, fetchPlayers, searchPlayers, fetchRandomPlayer } from '../src/api/index.js';
 
 describe('Frontend API Utils', () => {
   beforeEach(() => {
@@ -37,6 +37,20 @@ describe('Frontend API Utils', () => {
     expect(global.fetch).toHaveBeenCalledWith('http://localhost:3000/api/build', expect.objectContaining({
       method: 'POST',
       body: JSON.stringify({ type: 'DESK', x: 1, y: 2 })
+    }));
+    expect(res).toEqual(mockData);
+  });
+
+  it('moveInfrastructure should call POST /api/move', async () => {
+    const mockData = { success: true };
+    global.fetch.mockResolvedValueOnce({
+      json: () => Promise.resolve(mockData)
+    });
+
+    const res = await moveInfrastructure(1, 2, 3, 4, 'DESK_ROTATED');
+    expect(global.fetch).toHaveBeenCalledWith('http://localhost:3000/api/move', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ fromX: 1, fromY: 2, toX: 3, toY: 4, newType: 'DESK_ROTATED' })
     }));
     expect(res).toEqual(mockData);
   });

@@ -1,5 +1,4 @@
-import * as Phaser from 'phaser';
-import { fetchState, buildInfrastructure, expandRoom, login, register, fetchLeaderboard, fetchPlayerState, searchPlayers, fetchRandomPlayer } from '../api/index.js';
+import { fetchState, buildInfrastructure, expandRoom, login, register, fetchLeaderboard, fetchPlayerState, searchPlayers, fetchRandomPlayer, moveInfrastructure } from '../api/index.js';
 
 const TILE_WIDTH = 64;
 const TILE_HEIGHT = 32;
@@ -8,10 +7,13 @@ export class MainScene extends Phaser.Scene {
   constructor() {
     super({ key: 'MainScene' });
     this.gameState = null;
-    this.mode = 'idle'; // 'idle', 'build', 'expand'
+    this.mode = 'idle'; // 'idle', 'build', 'expand', 'move'
     this.buildType = null;
     this.buildWidth = 1;
     this.buildHeight = 1;
+
+    this.movingBuilding = null; // Stored when moving a building
+    this.selectedBuilding = null; // Stored when clicking a building in idle mode
 
     // Visit mode state
     this.isVisiting = false;
@@ -172,6 +174,8 @@ export class MainScene extends Phaser.Scene {
     this.ownGameState = null;
     this.mode = 'idle';
     this.buildType = null;
+    this.movingBuilding = null;
+    this.selectedBuilding = null;
 
     // Basic camera setup
     this.cameras.main.setBackgroundColor('#2d2d2d');
@@ -383,6 +387,10 @@ export class MainScene extends Phaser.Scene {
 
     // Draw buildings
     grid.forEach(b => {
+      // Don't draw the building currently being moved (it is represented by the hover indicator)
+      if (this.mode === 'move' && this.movingBuilding && b.x === this.movingBuilding.x && b.y === this.movingBuilding.y) {
+        return;
+      }
       const isoPos = this.cartesianToIsometric(b.x, b.y);
       const origin = this.textureOrigins[b.type] || { originX: 0.5, originY: 1 };
       const buildingSprite = this.add.sprite(isoPos.x, isoPos.y, b.type).setOrigin(origin.originX, origin.originY);
@@ -413,7 +421,7 @@ export class MainScene extends Phaser.Scene {
     
     // Rotation input ('R' key)
     this.input.keyboard.on('keydown-R', () => {
-      if (this.mode === 'build' && this.buildWidth !== this.buildHeight) {
+      if ((this.mode === 'build' || this.mode === 'move') && this.buildWidth !== this.buildHeight) {
         if (this.buildType.endsWith('_ROTATED')) {
           this.buildType = this.buildType.replace('_ROTATED', '');
         } else {
@@ -462,7 +470,7 @@ export class MainScene extends Phaser.Scene {
       this.hoverIndicator.setPosition(isoPos.x, isoPos.y);
       this.hoverIndicator.setVisible(true);
 
-      if (this.mode === 'build') {
+      if (this.mode === 'build' || this.mode === 'move') {
         // Change graphic depending on build size (using scaling or different texture)
         this.hoverIndicator.setTexture(this.buildType);
         const origin = this.textureOrigins[this.buildType] || { originX: 0.5, originY: 1 };
@@ -470,7 +478,7 @@ export class MainScene extends Phaser.Scene {
         this.hoverIndicator.setScale(1);
         this.hoverIndicator.setDepth(1000); // always on top
         
-        let isValid = this.isValidPlacement(cartPos.x, cartPos.y, this.buildWidth, this.buildHeight);
+        let isValid = this.isValidPlacement(cartPos.x, cartPos.y, this.buildWidth, this.buildHeight, this.mode === 'move' ? this.movingBuilding : null);
         this.hoverIndicator.setTint(isValid ? 0x00ff00 : 0xff0000);
       } else if (this.mode === 'expand') {
         const expandKey = `EXPAND_${this.buildWidth}`;
@@ -499,12 +507,14 @@ export class MainScene extends Phaser.Scene {
 
         const infoPanel = document.getElementById('info-panel');
         if (clickedBuilding) {
+           this.selectedBuilding = clickedBuilding;
            const infoTitle = document.getElementById('info-title');
            const infoDesc = document.getElementById('info-desc');
            infoTitle.innerText = `${clickedBuilding.type.replace('_', ' ')}`;
            infoDesc.innerText = `Position: (${clickedBuilding.x}, ${clickedBuilding.y})\nDimensions: ${clickedBuilding.width}x${clickedBuilding.height}`;
            infoPanel.style.display = 'block';
         } else {
+           this.selectedBuilding = null;
            if (infoPanel) infoPanel.style.display = 'none';
         }
         return;
@@ -527,6 +537,26 @@ export class MainScene extends Phaser.Scene {
         } catch (e) {
           this.showError('Server Error');
         }
+      } else if (this.mode === 'move') {
+        if (!this.isValidPlacement(cartPos.x, cartPos.y, this.buildWidth, this.buildHeight, this.movingBuilding)) {
+          this.showError('Invalid placement');
+          return;
+        }
+
+        try {
+          const res = await moveInfrastructure(this.movingBuilding.x, this.movingBuilding.y, cartPos.x, cartPos.y, this.buildType);
+          if (res.success) {
+            this.gameState = res.gameState;
+            // Go back to idle when done moving
+            document.getElementById('btn-cancel').click();
+          } else {
+            this.showError(res.message);
+            document.getElementById('btn-cancel').click();
+          }
+        } catch (e) {
+          this.showError('Server Error');
+          document.getElementById('btn-cancel').click();
+        }
       } else if (this.mode === 'expand') {
         if (!this.isValidExpansion(cartPos.x, cartPos.y, this.buildWidth)) {
           this.showError('Invalid expansion or insufficient funds');
@@ -548,7 +578,7 @@ export class MainScene extends Phaser.Scene {
     });
   }
 
-  isValidPlacement(x, y, w, h) {
+  isValidPlacement(x, y, w, h, ignoreBuilding = null) {
     if (!this.gameState) return false;
     // Check bounds
     if (x < 0 || y < 0) return false;
@@ -562,6 +592,7 @@ export class MainScene extends Phaser.Scene {
     
     // Check collision
     const isColliding = this.gameState.grid.some(b => {
+      if (ignoreBuilding && b.x === ignoreBuilding.x && b.y === ignoreBuilding.y) return false;
       return x < b.x + b.width && x + w > b.x &&
              y < b.y + b.height && y + h > b.y;
     });
@@ -764,6 +795,7 @@ export class MainScene extends Phaser.Scene {
 
     const btnInfoClose = document.getElementById('btn-info-close');
     const btnInfoUpgrade = document.getElementById('btn-info-upgrade');
+    const btnInfoMove = document.getElementById('btn-info-move');
     const infoPanel = document.getElementById('info-panel');
 
     const btnShowFullLb = document.getElementById('btn-show-full-lb');
@@ -784,7 +816,20 @@ export class MainScene extends Phaser.Scene {
 
     if (btnInfoClose) {
       btnInfoClose.onclick = () => {
+        this.selectedBuilding = null;
         if (infoPanel) infoPanel.style.display = 'none';
+      };
+    }
+
+    if (btnInfoMove) {
+      btnInfoMove.onclick = () => {
+        if (!this.selectedBuilding) return;
+        this.movingBuilding = this.selectedBuilding;
+        this.selectedBuilding = null;
+        if (infoPanel) infoPanel.style.display = 'none';
+        
+        setMode('move', this.movingBuilding.type, this.movingBuilding.width, this.movingBuilding.height);
+        this.drawWorld(); // Redraw world to ghost/hide the building we picked up
       };
     }
 

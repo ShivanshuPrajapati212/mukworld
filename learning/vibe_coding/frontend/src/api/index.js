@@ -42,6 +42,15 @@ export async function buildInfrastructure(type, x, y) {
   return res.json();
 }
 
+export async function moveInfrastructure(fromX, fromY, toX, toY, newType) {
+  const res = await fetch(`${API_URL}/api/move`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ fromX, fromY, toX, toY, newType })
+  });
+  return res.json();
+}
+
 export async function expandRoom(x, y, size = 1) {
   const res = await fetch(`${API_URL}/api/expand`, {
     method: 'POST',

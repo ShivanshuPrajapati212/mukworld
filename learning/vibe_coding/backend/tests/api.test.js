@@ -121,6 +121,41 @@ describe('Backend API - Core Endpoints', () => {
     expect(res.body.message).toBe('Not enough money');
   });
 
+  it('POST /api/move should update an existing building coordinates and type', async () => {
+    // First set a building via direct DB update so we don't depend on POST /api/build money
+    const GameState = mongoose.model('GameState');
+    const User = mongoose.model('User');
+    const user = await User.findOne({ username: testUsername });
+    await GameState.updateOne({ userId: user._id }, { $push: { grid: { type: 'SERVER_T2', x: 2, y: 2, width: 2, height: 1 } } });
+    
+    const { activeSessions } = await import('../index.js');
+    for (const [key] of activeSessions) activeSessions.delete(key);
+
+    const res = await authPost('/api/move', { fromX: 2, fromY: 2, toX: 5, toY: 5, newType: 'SERVER_T2_ROTATED' });
+    expect(res.statusCode).toEqual(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.gameState.grid.length).toBe(1);
+    expect(res.body.gameState.grid[0].x).toBe(5);
+    expect(res.body.gameState.grid[0].y).toBe(5);
+    expect(res.body.gameState.grid[0].type).toBe('SERVER_T2_ROTATED');
+  });
+
+  it('POST /api/move should fail if colliding after move', async () => {
+    // First set two buildings
+    const GameState = mongoose.model('GameState');
+    const User = mongoose.model('User');
+    const user = await User.findOne({ username: testUsername });
+    await GameState.updateOne({ userId: user._id }, { $push: { grid: { $each: [{ type: 'SERVER_T1', x: 2, y: 2, width: 1, height: 1 }, { type: 'SERVER_T1', x: 5, y: 5, width: 1, height: 1 }] } } });
+    
+    const { activeSessions } = await import('../index.js');
+    for (const [key] of activeSessions) activeSessions.delete(key);
+
+    const res = await authPost('/api/move', { fromX: 2, fromY: 2, toX: 5, toY: 5, newType: 'SERVER_T1' });
+    expect(res.statusCode).toEqual(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe('Building collides with another building');
+  });
+
   it('POST /api/expand should unlock a tile and cost money', async () => {
     const res = await authPost('/api/expand', { x: 10, y: 0 });
     expect(res.statusCode).toEqual(200);
